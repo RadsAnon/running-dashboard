@@ -1,41 +1,45 @@
 from datetime import datetime, timedelta
 
 def calculate_pace_zones(best_5k_pace_min):
+    # Threshold pace (T) is usually slightly slower than 5K pace
     tp = best_5k_pace_min * 1.05 
+    
+    # Logic: Pace is min/km. 4:00 is FASTER than 5:00.
+    # We define the ranges so that the faster pace is the 'min' in the check.
     return [
-        {'name': 'Z1: Recovery',  'min': tp * 1.29, 'max': 20.0, 'color': '#90A4AE'},
-        {'name': 'Z2: Aerobic',   'min': tp * 1.14, 'max': tp * 1.29, 'color': '#81C784'},
-        {'name': 'Z3: Tempo',     'min': tp * 1.06, 'max': tp * 1.14, 'color': '#4DB6AC'},
-        {'name': 'Z4: Threshold', 'min': tp * 0.99, 'max': tp * 1.06, 'color': '#64B5F6'},
-        {'name': 'Z5: Anaerobic', 'min': 0.0, 'max': tp * 0.99, 'color': '#9575CD'}
+        {'name': 'Z5: Anaerobic', 'min': 0.0,            'max': tp * 0.99,    'color': '#9575CD'}, # Fastest
+        {'name': 'Z4: Threshold', 'min': tp * 0.99,      'max': tp * 1.06,    'color': '#1976D2'},
+        {'name': 'Z3: Tempo',     'min': tp * 1.06,      'max': tp * 1.14,    'color': '#00796B'},
+        {'name': 'Z2: Aerobic',   'min': tp * 1.14,      'max': tp * 1.29,    'color': '#2E7D32'},
+        {'name': 'Z1: Recovery',  'min': tp * 1.29,      'max': 25.0,         'color': '#455A64'}  # Slowest
     ]
 
-def generate_calendar_html(summary_df, is_dark=True):
-    # Manually define colors based on the theme since iframes can't see CSS variables
-    text_color = "#E0E0E0" if is_dark else "#262730"
-    bubble_bg = "rgba(255, 255, 255, 0.1)" if is_dark else "rgba(0, 0, 0, 0.05)"
-    border_color = "rgba(255, 255, 255, 0.2)" if is_dark else "rgba(0, 0, 0, 0.1)"
+def generate_calendar_html(summary_df):
+    text_color = "#E0E0E0"
+    bubble_bg = "rgba(255, 255, 255, 0.1)"
+    border_color = "rgba(255, 255, 255, 0.15)"
 
     style = f"""
     <style>
-        .cal-container {{ font-family: sans-serif; color: {text_color}; background-color: transparent; }}
+        body {{ background-color: transparent; margin: 0; padding: 0; }}
+        .cal-container {{ font-family: sans-serif; color: {text_color}; }}
         .cal-header {{ 
             display: grid; grid-template-columns: 140px repeat(7, 1fr); gap: 10px; 
-            font-weight: 600; color: {text_color}; opacity: 0.6; text-align: center; margin-bottom: 20px;
-            font-size: 0.8rem; text-transform: uppercase;
+            font-weight: 600; color: {text_color}; opacity: 0.5; text-align: center; margin-bottom: 20px;
+            font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;
         }}
         .cal-week {{ 
             display: grid; grid-template-columns: 140px repeat(7, 1fr); gap: 10px; 
             margin-bottom: 20px; border-bottom: 1px solid {border_color}; padding-bottom: 15px; align-items: center;
         }}
-        .cal-total-km {{ font-size: 1.6rem; font-weight: 800; color: #4DB6AC; }}
+        .cal-total-km {{ font-size: 1.7rem; font-weight: 800; color: #4DB6AC; }}
         .cal-day-cell {{ text-align: center; display: flex; align-items: center; justify-content: center; }}
         .cal-activity-bubble {{ 
-            border-radius: 10px; background: {bubble_bg};
+            border-radius: 8px; background: {bubble_bg};
             display: flex; align-items: center; justify-content: center; color: {text_color}; 
             font-weight: 600; border: 1px solid {border_color};
         }}
-        .week-label {{ font-size: 0.7rem; text-transform: uppercase; color: {text_color}; opacity: 0.4; }}
+        .week-label {{ font-size: 0.65rem; text-transform: uppercase; color: {text_color}; opacity: 0.4; }}
     </style>
     """
     html = f"<div class='cal-container'>{style}<div class='cal-header'><div>WEEK VOLUME</div>"
