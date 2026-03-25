@@ -69,7 +69,7 @@ if not summary_df.empty:
             seconds = int(total_seconds % 60)
             
             # Display prominently above the charts
-            st.markdown(f"### 🏆 Baseline Performance")
+            st.markdown(f"### Baseline Performance")
             st.markdown(f"**Reference 5K Time:** {minutes}:{seconds:02d}  &nbsp;&nbsp; | &nbsp;&nbsp;  **Pace:** {p_min}:{p_sec:02d}/km")
             st.caption("Zones below are calibrated based on this benchmark.")
         else:
