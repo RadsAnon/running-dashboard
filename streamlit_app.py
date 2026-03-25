@@ -51,57 +51,75 @@ if not summary_df.empty:
         m1.metric("Distance", f"{run_stats['distance_km']:.2f} km")
         m2.metric("Moving Time", f"{run_stats['moving_time_min']:.1f} min")
         
-        # Format decimal pace to min:sec for the metric display
         p_min = int(run_stats['avg_pace'])
         p_sec = int((run_stats['avg_pace'] - p_min) * 60)
         m3.metric("Avg Pace", f"{p_min}:{p_sec:02d} /km")
 
         st.divider()
 
-        # --- BEST 5K CALCULATION & DISPLAY ---
-        # Find the best 5K pace in the dataset for zone context
+        # --- BEST 5K CALCULATION ---
         runs_near_5k = summary_df[summary_df['distance_km'].between(4.8, 5.5)]
         if not runs_near_5k.empty:
             best_5k_pace = runs_near_5k['avg_pace'].min()
-            # Convert pace to total 5k time: Pace * 5
             total_seconds = best_5k_pace * 5 * 60
-            minutes = int(total_seconds // 60)
-            seconds = int(total_seconds % 60)
+            b_min, b_sec = int(total_seconds // 60), int(total_seconds % 60)
             
-            # Display prominently above the charts
-            st.markdown(f"### Baseline Performance")
-            st.markdown(f"**Reference 5K Time:** {minutes}:{seconds:02d}  &nbsp;&nbsp; | &nbsp;&nbsp;  **Pace:** {p_min}:{p_sec:02d}/km")
+            st.markdown(f"### 🏆 Baseline Performance")
+            st.markdown(f"**Reference 5K Time:** {b_min}:{b_sec:02d} | **Pace:** {format_pace(best_5k_pace)}/km")
             st.caption("Zones below are calibrated based on this benchmark.")
         else:
-            st.caption("No 5K activities found to calibrate zones. Using default baseline.")
-            best_5k_pace = 6.0 # Default fallback
+            st.caption("No 5K activities found. Using default baseline (6:00/km).")
+            best_5k_pace = 6.0
 
         run_data = get_detailed_streams(options[selection])
         if not run_data.empty:
-            # --- PACE SPLITS CHART ---
-            # (Your existing splits code here...)
+            # --- 1. PACE SPLITS CHART (FIXED) ---
+            run_data['km_bin'] = (run_data['dist_km']).astype(int) + 1
+            splits = []
+            for km, group in run_data.groupby('km_bin'):
+                d_diff = (group['dist_m'].max() - group['dist_m'].min()) / 1000
+                t_diff = (group['time'].max() - group['time'].min()) / 60
+                if d_diff > 0.1:
+                    pace = t_diff / d_diff
+                    splits.append({'KM': f"KM {km}", 'Pace': pace, 'Label': f"{format_pace(pace)}"})
             
-            # --- INTENSITY ZONES CHART ---
+            df_splits = pd.DataFrame(splits)
+            fig_splits = px.bar(df_splits, x='Pace', y='KM', orientation='h', 
+                                text='Label', title="Pace Splits", 
+                                color_discrete_sequence=['#4DB6AC'], template="plotly_dark")
+            fig_splits.update_traces(textposition='outside')
+            fig_splits.update_layout(yaxis={'autorange': 'reversed'}, xaxis_title="Pace (min/km)")
+            st.plotly_chart(fig_splits, use_container_width=True)
+
+            st.divider()
+
+            # --- 2. INTENSITY ZONES CHART ---
             current_zones = calculate_pace_zones(best_5k_pace)
-            
-            # Check pace against ranges
-            def get_zone(p):
+            # Create labels that include the range: "Z3: Tempo (5:00-5:30)"
+            zone_label_map = {z['name']: f"{z['name']} ({z['range']})" for z in current_zones}
+
+            def get_zone_name(p):
                 for z in current_zones:
-                    if z['min'] <= p < z['max']:
-                        return z['name']
+                    if z['min'] <= p < z['max']: return z['name']
                 return 'Other'
 
-            run_data['zone'] = run_data['pace_smooth'].apply(get_zone)
-            zone_time = run_data.groupby('zone')['time'].count().reset_index()
+            run_data['raw_zone'] = run_data['pace_smooth'].apply(get_zone_name)
+            run_data['display_zone'] = run_data['raw_zone'].map(zone_label_map)
+            
+            zone_time = run_data.groupby('display_zone')['time'].count().reset_index()
             zone_time['percent'] = (zone_time['time'] / zone_time['time'].sum()) * 100
             
-            # Ensure sort order Z1 -> Z5
-            z_order = [z['name'] for z in reversed(current_zones)]
-            zone_time['zone'] = pd.Categorical(zone_time['zone'], categories=z_order, ordered=True)
-            zone_time = zone_time.sort_values('zone')
+            z_display_order = [zone_label_map[z['name']] for z in reversed(current_zones)]
+            zone_time['display_zone'] = pd.Categorical(zone_time['display_zone'], categories=z_display_order, ordered=True)
+            zone_time = zone_time.sort_values('display_zone')
 
-            fig_zones = px.bar(zone_time, x='percent', y='zone', orientation='h', title="Intensity Distribution (%)",
-                               color='zone', color_discrete_map={z['name']: z['color'] for z in current_zones}, template="plotly_dark")
+            fig_zones = px.bar(zone_time, x='percent', y='display_zone', orientation='h', 
+                               title="Time in Intensity Zones (%)",
+                               color='display_zone', 
+                               color_discrete_map={zone_label_map[z['name']]: z['color'] for z in current_zones}, 
+                               template="plotly_dark")
+            
+            fig_zones.update_layout(showlegend=False, yaxis_title=None, xaxis_title="Percentage of Run")
             st.plotly_chart(fig_zones, use_container_width=True)
 else:
     st.info("No activities found for 2026.")
