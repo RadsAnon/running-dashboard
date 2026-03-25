@@ -147,7 +147,18 @@ def get_detailed_streams(activity_id):
     except Exception as e:
         st.error(f"Error fetching activity details: {e}")
         return pd.DataFrame()
-
+# Zone calculations         
+def calculate_pace_zones(best_5k_pace_min):
+    # Standard threshold scaling (5K pace is roughly 100-105% of Threshold)
+    threshold_pace = best_5k_pace_min * 1.05 
+    
+    return [
+        {'name': 'Z1: Recovery',  'min': threshold_pace * 1.29, 'max': 20.0, 'color': '#d1d1d1'},
+        {'name': 'Z2: Aerobic',   'min': threshold_pace * 1.14, 'max': threshold_pace * 1.29, 'color': '#2eb82e'},
+        {'name': 'Z3: Tempo',     'min': threshold_pace * 1.06, 'max': threshold_pace * 1.14, 'color': '#ffcc00'},
+        {'name': 'Z4: Threshold', 'min': threshold_pace * 0.99, 'max': threshold_pace * 1.06, 'color': '#ff8000'},
+        {'name': 'Z5: Anaerobic', 'min': 0.0, 'max': threshold_pace * 0.99, 'color': '#ff3300'}
+    ]
 # --- 5. MAIN TABS ---
 summary_df = load_2026_data()
 
@@ -240,11 +251,37 @@ if not summary_df.empty:
             
             st.plotly_chart(fig_splits, use_container_width=True)
 
+        
+
         # 5. Continuous Pace Profile (The area chart you had before)
         st.subheader("Live Pace Profile")
         f_pace = px.area(run_data, x='dist_km', y='pace_smooth', title="Continuous Pace (min/km)", color_discrete_sequence=['#fc4c02'])
         f_pace.update_yaxes(autorange="reversed") # Invert so "faster" (lower number) is higher up
         st.plotly_chart(f_pace, use_container_width=True)
 
+        # 1. AUTO-CALIBRATION: Find the fastest 5K of 2026
+        # Filtering for runs close to 5km to find a "best effort"
+        runs_near_5k = summary_df[summary_df['distance_km'].between(4.9, 5.5)]
+        if not runs_near_5k.empty:
+            best_5k_pace = runs_near_5k['avg_pace'].min()
+            st.caption(f"🛡️ Zones auto-calibrated using your best 2026 5K pace: **{best_5k_pace:.2f} min/km**")
+        else:
+            best_5k_pace = 6.0  # Fallback if no 5K found
+            st.caption("⚠️ No 5K reference found. Using default 6:00 min/km for zones.")
+
+        # 2. GENERATE DYNAMIC ZONES
+        current_zones = calculate_pace_zones(best_5k_pace)
+
+        def get_dynamic_zone(pace):
+            for z in current_zones:
+                if z['min'] <= pace < z['max']:
+                    return z['name']
+            return 'Other'
+
+        # 3. APPLY TO CURRENT ACTIVITY
+        run_data['zone'] = run_data['pace_smooth'].apply(get_dynamic_zone)
+        
+        # ... [Rest of your zone grouping and Plotly code from the previous step] ...
+        # (Make sure your Plotly code uses 'current_zones' for the color map!)
 else:
     st.info("No activities found for 2026. Time for a run?")
