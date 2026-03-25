@@ -46,38 +46,43 @@ if not summary_df.empty:
         selection = st.selectbox("Pick an activity:", list(options.keys()))
         run_stats = summary_df[summary_df['id'] == options[selection]].iloc[0]
         
+        # --- TOP METRICS ---
         m1, m2, m3 = st.columns(3)
         m1.metric("Distance", f"{run_stats['distance_km']:.2f} km")
-        m2.metric("Time", f"{run_stats['moving_time_min']:.1f} min")
-        m3.metric("Pace", f"{run_stats['avg_pace']:.2f} /km")
+        m2.metric("Moving Time", f"{run_stats['moving_time_min']:.1f} min")
+        
+        # Format decimal pace to min:sec for the metric display
+        p_min = int(run_stats['avg_pace'])
+        p_sec = int((run_stats['avg_pace'] - p_min) * 60)
+        m3.metric("Avg Pace", f"{p_min}:{p_sec:02d} /km")
+
+        st.divider()
+
+        # --- BEST 5K CALCULATION & DISPLAY ---
+        # Find the best 5K pace in the dataset for zone context
+        runs_near_5k = summary_df[summary_df['distance_km'].between(4.8, 5.5)]
+        if not runs_near_5k.empty:
+            best_5k_pace = runs_near_5k['avg_pace'].min()
+            # Convert pace to total 5k time: Pace * 5
+            total_seconds = best_5k_pace * 5 * 60
+            minutes = int(total_seconds // 60)
+            seconds = int(total_seconds % 60)
+            
+            # Display prominently above the charts
+            st.markdown(f"### 🏆 Baseline Performance")
+            st.markdown(f"**Reference 5K Time:** {minutes}:{seconds:02d}  &nbsp;&nbsp; | &nbsp;&nbsp;  **Pace:** {p_min}:{p_sec:02d}/km")
+            st.caption("Zones below are calibrated based on this benchmark.")
+        else:
+            st.caption("No 5K activities found to calibrate zones. Using default baseline.")
+            best_5k_pace = 6.0 # Default fallback
 
         run_data = get_detailed_streams(options[selection])
         if not run_data.empty:
-            st.divider()
+            # --- PACE SPLITS CHART ---
+            # (Your existing splits code here...)
             
-            # --- FIXED SPLITS CHART ---
-            run_data['km_bin'] = (run_data['dist_km']).astype(int) + 1
-            splits = []
-            for km, group in run_data.groupby('km_bin'):
-                d_diff = (group['dist_m'].max() - group['dist_m'].min()) / 1000
-                t_diff = (group['time'].max() - group['time'].min()) / 60
-                if d_diff > 0.1:
-                    pace = t_diff / d_diff
-                    # Create a nice string label for the bar (e.g., "5.42")
-                    splits.append({'KM': f"KM {km}", 'Pace': pace, 'Label': f"{pace:.2f}"})
-            
-            df_splits = pd.DataFrame(splits)
-            fig_splits = px.bar(df_splits, x='Pace', y='KM', orientation='h', 
-                                text='Label', title="Pace Splits", 
-                                color_discrete_sequence=['#4DB6AC'], template="plotly_dark")
-            fig_splits.update_traces(textposition='outside') # FIXED: Labels now visible
-            fig_splits.update_layout(yaxis={'autorange': 'reversed'})
-            st.plotly_chart(fig_splits, use_container_width=True)
-
-            # --- FIXED ZONE LOGIC ---
-            runs_near_5k = summary_df[summary_df['distance_km'].between(4.8, 5.5)]
-            best_5k = runs_near_5k['avg_pace'].min() if not runs_near_5k.empty else 6.0
-            current_zones = calculate_pace_zones(best_5k)
+            # --- INTENSITY ZONES CHART ---
+            current_zones = calculate_pace_zones(best_5k_pace)
             
             # Check pace against ranges
             def get_zone(p):
