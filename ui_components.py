@@ -28,23 +28,20 @@ def generate_calendar_html(summary_df):
     <style>
         body {{ background-color: transparent; margin: 0; padding: 0; }}
         .cal-container {{ font-family: sans-serif; color: {text_color}; }}
-        .cal-header {{ 
-            display: grid; grid-template-columns: 140px repeat(7, 1fr); gap: 10px; 
-            font-weight: 600; color: {text_color}; opacity: 0.5; text-align: center; margin-bottom: 20px;
-            font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;
-        }}
-        .cal-week {{ 
-            display: grid; grid-template-columns: 140px repeat(7, 1fr); gap: 10px; 
-            margin-bottom: 20px; border-bottom: 1px solid {border_color}; padding-bottom: 15px; align-items: center;
-        }}
-        .cal-total-km {{ font-size: 1.7rem; font-weight: 800; color: #4DB6AC; }}
-        .cal-day-cell {{ text-align: center; display: flex; align-items: center; justify-content: center; }}
+        
+        /* ... other styles ... */
+
         .cal-activity-bubble {{ 
-            border-radius: 8px; background: {bubble_bg};
-            display: flex; align-items: center; justify-content: center; color: {text_color}; 
-            font-weight: 600; border: 1px solid {border_color};
+            border-radius: 50%; /* <--- CHANGE THIS FROM 8px TO 50% */
+            background: {bubble_bg};
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: {text_color}; 
+            font-weight: 600; 
+            border: 1px solid {border_color};
+            aspect-ratio: 1 / 1; /* Ensures it stays a perfect circle */
         }}
-        .week-label {{ font-size: 0.65rem; text-transform: uppercase; color: {text_color}; opacity: 0.4; }}
     </style>
     """
     html = f"<div class='cal-container'>{style}<div class='cal-header'><div>WEEK VOLUME</div>"
