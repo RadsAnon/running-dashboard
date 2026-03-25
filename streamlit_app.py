@@ -124,7 +124,28 @@ def generate_calendar_html(summary_df, start_date):
         # Inner loop still goes Mon -> Sun for the row layout
         for d_offset in range(7):
             day_to_show = this_week_start + timedelta(days=d_offset)
-            d_data
+            d_data = summary_df[summary_df['date'] == day_to_show.date()]
+            
+            html += "<div class='cal-day-cell'>"
+            if not d_data.empty:
+                dist = d_data.iloc[0]['distance_km']
+                
+                # --- PROMINENT BUBBLE SIZING ---
+                # Base is 35px, adding 5px per KM. 
+                # 5km = 60px | 10km = 85px | 15km = 110px
+                size = 35 + (dist * 5) 
+                size = min(size, 95) # Cap it so it doesn't overlap neighbors
+                
+                # Dynamic font size so text scales with the bubble
+                font_size = max(0.8, size/65)
+                
+                html += f"<div class='cal-activity-bubble' style='width: {size}px; height: {size}px; font-size: {font_size}rem;'>{dist:.1f}</div>"
+            else: 
+                html += "<div class='cal-rest'>•</div>"
+            html += "</div>"
+        html += "</div>"
+        
+    return html + "</div>"
 
 # --- 4. MAIN UI ---
 st.title("🏃 Radhika's Training Command Center")
