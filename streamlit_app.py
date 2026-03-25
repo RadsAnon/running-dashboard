@@ -6,9 +6,9 @@ from ui_components import calculate_pace_zones, generate_calendar_html
 
 st.set_page_config(layout="wide", page_title="Training Command Center")
 
-# Custom Dark Theme Colors
-MAIN_ACCENT = "#D84315" # Deep Burnt Orange
-LINE_COLOR = "#00838F" # Muted Teal/Cyan
+# Frost Palette
+PRIMARY_COLOR = "#4DB6AC" # Teal
+SECONDARY_COLOR = "#90A4AE" # Slate
 
 # --- HEADER ---
 col_title, col_sync = st.columns([4, 1])
@@ -29,13 +29,11 @@ if not summary_df.empty:
     with tab2:
         c1, c2 = st.columns(2)
         with c1:
-            fig_m = px.bar(summary_df, x='date', y='distance_km', title="Daily Mileage", 
-                           color_discrete_sequence=[MAIN_ACCENT], template="plotly_dark")
-            st.plotly_chart(fig_m, use_container_width=True)
+            st.plotly_chart(px.bar(summary_df, x='date', y='distance_km', title="Daily Mileage", 
+                           color_discrete_sequence=[PRIMARY_COLOR]), use_container_width=True)
         with c2:
-            fig_p = px.line(summary_df, x='date', y='avg_pace', title="Pace Evolution",
-                            template="plotly_dark")
-            fig_p.update_traces(line_color=LINE_COLOR, line_width=3)
+            fig_p = px.line(summary_df, x='date', y='avg_pace', title="Pace Evolution")
+            fig_p.update_traces(line_color=SECONDARY_COLOR, line_width=3)
             fig_p.update_yaxes(autorange="reversed")
             st.plotly_chart(fig_p, use_container_width=True)
 
@@ -53,8 +51,6 @@ if not summary_df.empty:
         
         if not run_data.empty:
             st.divider()
-            
-            # 1. Splits Chart (Muted Orange)
             run_data['km_bin'] = (run_data['dist_km']).astype(int) + 1
             splits = []
             for km, group in run_data.groupby('km_bin'):
@@ -67,31 +63,19 @@ if not summary_df.empty:
             df_splits['label'] = df_splits['Pace'].apply(lambda x: f"{x:.2f}")
 
             fig_splits = px.bar(df_splits, x='Pace', y='KM', orientation='h', text='label', 
-                                title="Pace per Kilometer", color_discrete_sequence=[MAIN_ACCENT],
-                                template="plotly_dark")
+                                title="Pace per Kilometer", color_discrete_sequence=[PRIMARY_COLOR])
             fig_splits.update_layout(yaxis={'autorange': 'reversed'}, margin=dict(r=50), showlegend=False)
             st.plotly_chart(fig_splits, use_container_width=True)
 
-            # 2. Zone Analysis (Muted Professional Palette)
-            runs_near_5k = summary_df[summary_df['distance_km'].between(4.9, 5.5)]
-            best_5k = runs_near_5k['avg_pace'].min() if not runs_near_5k.empty else 6.0
+            best_5k = summary_df[summary_df['distance_km'].between(4.9, 5.5)]['avg_pace'].min() if not summary_df.empty else 6.0
             current_zones = calculate_pace_zones(best_5k)
-            
-            run_data['zone'] = run_data['pace_smooth'].apply(
-                lambda p: next((z['name'] for z in current_zones if z['min'] <= p < z['max']), 'Other')
-            )
+            run_data['zone'] = run_data['pace_smooth'].apply(lambda p: next((z['name'] for z in current_zones if z['min'] <= p < z['max']), 'Other'))
             
             zone_time = run_data.groupby('zone')['time'].count().reset_index()
             zone_time['percent'] = (zone_time['time'] / zone_time['time'].sum()) * 100
             
-            # Ensure sorting
-            z_names = [z['name'] for z in current_zones]
-            zone_time['zone'] = pd.Categorical(zone_time['zone'], categories=z_names, ordered=True)
-            zone_time = zone_time.sort_values('zone')
-
             fig_zones = px.bar(zone_time, x='percent', y='zone', orientation='h', title="Intensity Distribution (%)",
-                               color='zone', color_discrete_map={z['name']: z['color'] for z in current_zones},
-                               template="plotly_dark")
+                               color='zone', color_discrete_map={z['name']: z['color'] for z in current_zones})
             fig_zones.update_layout(showlegend=False, xaxis_range=[0, 100])
             st.plotly_chart(fig_zones, use_container_width=True)
 else:
