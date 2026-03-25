@@ -24,7 +24,8 @@ if not summary_df.empty:
     tab1, tab2, tab3 = st.tabs(["📅 Training Log", "📈 Global Trends", "🔍 Activity Details"])
 
     with tab1:
-        st.components.v1.html(generate_calendar_html(summary_df), height=650, scrolling=True)
+        calendar_html = generate_calendar_html(summary_df, is_dark=True)
+        st.components.v1.html(calendar_html, height=650, scrolling=True)
 
     with tab2:
         c1, c2 = st.columns(2)
