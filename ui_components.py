@@ -90,3 +90,15 @@ def generate_calendar_html(summary_df):
         for d_offset in range(7):
             day_to_show = w_start + timedelta(days=d_offset)
             d_data = summary_df[summary_df['date'] == day_to_show.date()]
+            html += "<div class='cal-day-cell'>"
+            if not d_data.empty:
+                dist = d_data.iloc[0]['distance_km']
+                # Scale size based on distance
+                size = min(35 + (dist * 3), 75) 
+                html += f"<div class='cal-activity-bubble' style='width: {size}px; height: {size}px;'>{dist:.1f}</div>"
+            else: 
+                html += "<div style='opacity: 0.2; color: var(--text-color);'>•</div>"
+            html += "</div>"
+        html += "</div>"
+    
+    return html + "</div>"
