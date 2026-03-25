@@ -202,26 +202,40 @@ if not summary_df.empty:
         df_splits = pd.DataFrame(splits)
 
         # 4. Horizontal Bar Graph: Pace Splits
+        # 4. Horizontal Bar Graph: Pace Splits with Direct Labels
         if not df_splits.empty:
             st.subheader("Split Analysis")
             
+            # Format the pace to 2 decimal places for the labels
+            df_splits['label'] = df_splits['Pace'].apply(lambda x: f"{x:.2f}")
+
             fig_splits = px.bar(
                 df_splits, 
                 x='Pace', 
                 y='KM', 
                 orientation='h',
+                text='label', # This prints the pace at the tip of the bar
                 title="Pace per Kilometer",
                 labels={'Pace': 'Pace (min/km)', 'KM': 'Split'},
-                color='Pace',
-                color_continuous_scale='OrRd'
+                color_discrete_sequence=['#fc4c02'] # Solid Strava Orange for all bars
             )
             
-            # FIX: Explicitly target the Y-axis and use 'total descending' or 'array'
-            # To keep KM 1 at the top, we actually want to reverse the default categorical order
+            # Formatting for the labels and layout
+            fig_splits.update_traces(
+                textposition='outside', # Places the number at the tip
+                cliponaxis=False,       # Ensures the number isn't cut off
+                textfont_size=14,        # Makes it readable on a tablet
+                marker_line_color='rgba(0,0,0,0)', # Removes outlines for a cleaner look
+                marker_line_width=0
+            )
+            
             fig_splits.update_layout(
                 yaxis={'autorange': 'reversed'}, 
+                xaxis_title="Pace (min/km)",
+                yaxis_title=None,
                 showlegend=False,
-                coloraxis_showscale=False # Keeps the UI clean on tablets
+                margin=dict(l=20, r=50, t=40, b=20), # Extra right margin for the text labels
+                height=400 # Adjust height based on how many KMs you usually run
             )
             
             st.plotly_chart(fig_splits, use_container_width=True)
