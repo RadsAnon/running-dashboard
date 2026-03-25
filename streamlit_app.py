@@ -1,11 +1,4 @@
 import streamlit as st
-# TEMPORARY DEBUG: This will show us if the secrets are actually loading
-if "access_token" in st.secrets:
-    st.write("✅ Cloud Secrets detected!")
-else:
-    st.write("❌ Cloud Secrets NOT detected. Checking keys...")
-    st.write(f"Available keys in Secrets: {list(st.secrets.keys())}")
-    
 import pandas as pd
 import numpy as np
 import plotly.express as px
