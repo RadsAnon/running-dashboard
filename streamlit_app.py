@@ -4,13 +4,27 @@ import plotly.express as px
 from strava_utils import load_strava_data, get_detailed_streams
 from ui_components import calculate_pace_zones, generate_calendar_html
 
+# 1. SET CONFIG
 st.set_page_config(layout="wide", page_title="Training Command Center")
 
-# Frost Palette
-PRIMARY_COLOR = "#4DB6AC" # Teal
-SECONDARY_COLOR = "#90A4AE" # Slate
+# 2. FORCE DARK MODE CSS
+# This overrides the default Streamlit theme colors
+st.markdown("""
+    <style>
+        /* Force dark background and white text globally */
+        .stApp {
+            background-color: #0E1117;
+            color: #FAFAFA;
+        }
+        /* Style Metric Labels */
+        [data-testid="stMetricLabel"] { color: #90A4AE !important; }
+        /* Style Tab Headers */
+        .stTabs [data-baseweb="tab-list"] button [data-testid="stWidgetLabel"] p { color: #FAFAFA; }
+        .stTabs [data-baseweb="tab-highlight"] { background-color: #4DB6AC; }
+    </style>
+    """, unsafe_allow_html=True)
 
-# --- HEADER ---
+# 3. APP LOGIC
 col_title, col_sync = st.columns([4, 1])
 with col_title: st.title("🏃 Training Command Center")
 with col_sync:
@@ -24,17 +38,17 @@ if not summary_df.empty:
     tab1, tab2, tab3 = st.tabs(["📅 Training Log", "📈 Global Trends", "🔍 Activity Details"])
 
     with tab1:
-        calendar_html = generate_calendar_html(summary_df, is_dark=True)
-        st.components.v1.html(calendar_html, height=650, scrolling=True)
+        # Calendar is already hardcoded dark in ui_components.py
+        st.components.v1.html(generate_calendar_html(summary_df), height=650, scrolling=True)
 
     with tab2:
         c1, c2 = st.columns(2)
         with c1:
             st.plotly_chart(px.bar(summary_df, x='date', y='distance_km', title="Daily Mileage", 
-                           color_discrete_sequence=[PRIMARY_COLOR]), use_container_width=True)
+                           color_discrete_sequence=['#4DB6AC'], template="plotly_dark"), use_container_width=True)
         with c2:
-            fig_p = px.line(summary_df, x='date', y='avg_pace', title="Pace Evolution")
-            fig_p.update_traces(line_color=SECONDARY_COLOR, line_width=3)
+            fig_p = px.line(summary_df, x='date', y='avg_pace', title="Pace Evolution", template="plotly_dark")
+            fig_p.update_traces(line_color="#90A4AE", line_width=3)
             fig_p.update_yaxes(autorange="reversed")
             st.plotly_chart(fig_p, use_container_width=True)
 
@@ -49,35 +63,26 @@ if not summary_df.empty:
         m3.metric("Pace", f"{run_stats['avg_pace']:.2f} /km")
 
         run_data = get_detailed_streams(options[selection])
-        
         if not run_data.empty:
-            st.divider()
+            # Splits & Zones (Using plotly_dark template)
             run_data['km_bin'] = (run_data['dist_km']).astype(int) + 1
-            splits = []
-            for km, group in run_data.groupby('km_bin'):
-                dist = (group['dist_m'].max() - group['dist_m'].min()) / 1000
-                if dist > 0.1:
-                    pace = (group['time'].max() - group['time'].min()) / 60 / dist
-                    splits.append({'KM': f"KM {km}", 'Pace': pace})
+            splits = [{'KM': f"KM {km}", 'Pace': (g['time'].max()-g['time'].min())/60/((g['dist_m'].max()-g['dist_m'].min())/1000)} 
+                      for km, g in run_data.groupby('km_bin') if (g['dist_m'].max()-g['dist_m'].min()) > 100]
             
             df_splits = pd.DataFrame(splits)
-            df_splits['label'] = df_splits['Pace'].apply(lambda x: f"{x:.2f}")
-
-            fig_splits = px.bar(df_splits, x='Pace', y='KM', orientation='h', text='label', 
-                                title="Pace per Kilometer", color_discrete_sequence=[PRIMARY_COLOR])
-            fig_splits.update_layout(yaxis={'autorange': 'reversed'}, margin=dict(r=50), showlegend=False)
+            fig_splits = px.bar(df_splits, x='Pace', y='KM', orientation='h', title="Pace Splits", 
+                                color_discrete_sequence=['#4DB6AC'], template="plotly_dark")
+            fig_splits.update_layout(yaxis={'autorange': 'reversed'})
             st.plotly_chart(fig_splits, use_container_width=True)
 
             best_5k = summary_df[summary_df['distance_km'].between(4.9, 5.5)]['avg_pace'].min() if not summary_df.empty else 6.0
             current_zones = calculate_pace_zones(best_5k)
             run_data['zone'] = run_data['pace_smooth'].apply(lambda p: next((z['name'] for z in current_zones if z['min'] <= p < z['max']), 'Other'))
-            
             zone_time = run_data.groupby('zone')['time'].count().reset_index()
             zone_time['percent'] = (zone_time['time'] / zone_time['time'].sum()) * 100
             
             fig_zones = px.bar(zone_time, x='percent', y='zone', orientation='h', title="Intensity Distribution (%)",
-                               color='zone', color_discrete_map={z['name']: z['color'] for z in current_zones})
-            fig_zones.update_layout(showlegend=False, xaxis_range=[0, 100])
+                               color='zone', color_discrete_map={z['name']: z['color'] for z in current_zones}, template="plotly_dark")
             st.plotly_chart(fig_zones, use_container_width=True)
 else:
     st.info("No activities found for 2026.")
