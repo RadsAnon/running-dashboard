@@ -82,58 +82,49 @@ def get_detailed_streams(activity_id):
 def generate_calendar_html(summary_df, start_date):
     style = """
     <style>
-        .cal-container { font-family: sans-serif; color: var(--text-color, #eee); }
-        .cal-header { display: grid; grid-template-columns: 120px repeat(7, 1fr); gap: 10px; font-weight: bold; color: #888; margin-bottom: 10px; text-align: center;}
-        .cal-week { display: grid; grid-template-columns: 120px repeat(7, 1fr); gap: 10px; margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px;}
-        .cal-total-km { font-size: 1.4rem; font-weight: 800; color: #fc4c02; }
-        .cal-day-cell { text-align: center; min-height: 80px; display: flex; align-items: center; justify-content: center; position: relative; }
+        .cal-container { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: var(--text-color, #eee); }
+        .cal-header { display: grid; grid-template-columns: 120px repeat(7, 1fr); gap: 10px; font-weight: bold; color: #888; margin-bottom: 15px; text-align: center; font-size: 0.9rem;}
+        .cal-week { display: grid; grid-template-columns: 120px repeat(7, 1fr); gap: 10px; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; align-items: center;}
+        .cal-total-km { font-size: 1.6rem; font-weight: 900; color: #fc4c02; line-height: 1;}
+        .cal-day-cell { text-align: center; min-height: 100px; display: flex; align-items: center; justify-content: center; position: relative; }
         .cal-activity-bubble { 
             border-radius: 50%; 
-            background: #fc4c02; 
+            background: linear-gradient(135deg, #fc4c02 0%, #ff7a45 100%);
             display: flex; 
             align-items: center; 
             justify-content: center; 
             color: white; 
-            font-weight: bold; 
-            transition: transform 0.2s;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            font-weight: 800; 
+            box-shadow: 0 4px 10px rgba(252, 76, 2, 0.3);
+            border: 2px solid rgba(255,255,255,0.2);
         }
-        .cal-rest { color: #444; font-size: 1.2rem; }
+        .cal-rest { color: #333; font-size: 1.5rem; font-weight: 100; }
+        .week-label { font-size: 0.75rem; text-transform: uppercase; color: #666; letter-spacing: 1px; }
     </style>
     """
-    html = f"<div class='cal-container'>{style}<div class='cal-header'><div>Week Of</div>"
+    html = f"<div class='cal-container'>{style}<div class='cal-header'><div>WEEK VOLUME</div>"
     for d in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]: html += f"<div>{d}</div>"
     html += "</div>"
     
-    first_of_month = datetime(start_date.year, start_date.month, 1)
-    curr = first_of_month - timedelta(days=first_of_month.weekday())
+    # --- ANTI-CHRONOLOGICAL LOGIC ---
+    # Start from the Monday of the current week (or selected month)
+    today = datetime.now()
+    start_of_current_week = today - timedelta(days=today.weekday())
+    curr_week_start = start_of_current_week
     
-    for _ in range(5):
-        w_end = curr + timedelta(days=6)
-        w_data = summary_df[(summary_df['date'] >= curr.date()) & (summary_df['date'] <= w_end.date())]
-        html += f"<div class='cal-week'><div><div style='font-size:0.8rem'>{curr.strftime('%b %d')}</div><div class='cal-total-km'>{w_data['distance_km'].sum():.1f}k</div></div>"
+    # Render 5 weeks going BACKWARDS
+    for i in range(5):
+        this_week_start = curr_week_start - timedelta(weeks=i)
+        this_week_end = this_week_start + timedelta(days=6)
         
-        for _ in range(7):
-            d_data = summary_df[summary_df['date'] == curr.date()]
-            html += "<div class='cal-day-cell'>"
-            
-            if not d_data.empty:
-                dist = d_data.iloc[0]['distance_km']
-                # --- DYNAMIC SIZING LOGIC ---
-                # Base size is 30px. We add 3px for every km run. 
-                # A 5k = 45px circle. A 15k = 75px circle.
-                size = 30 + (dist * 3) 
-                # Cap the size so it doesn't break the grid on massive runs
-                size = min(size, 85) 
-                
-                html += f"<div class='cal-activity-bubble' style='width: {size}px; height: {size}px; font-size: {max(0.7, size/60)}rem;'>{dist:.1f}</div>"
-            else: 
-                html += "<div class='cal-rest'>—</div>"
-            
-            html += "</div>"
-            curr += timedelta(days=1)
-        html += "</div>"
-    return html + "</div>"
+        w_data = summary_df[(summary_df['date'] >= this_week_start.date()) & (summary_df['date'] <= this_week_end.date())]
+        
+        html += f"<div class='cal-week'><div><div class='week-label'>{this_week_start.strftime('%b %d')}</div><div class='cal-total-km'>{w_data['distance_km'].sum():.1f}</div><div class='week-label'>KM TOTAL</div></div>"
+        
+        # Inner loop still goes Mon -> Sun for the row layout
+        for d_offset in range(7):
+            day_to_show = this_week_start + timedelta(days=d_offset)
+            d_data
 
 # --- 4. MAIN UI ---
 st.title("🏃 Radhika's Training Command Center")
