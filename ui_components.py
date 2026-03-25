@@ -1,18 +1,23 @@
 from datetime import datetime, timedelta
 
+def format_pace(decimal_pace):
+    if decimal_pace >= 20.0 or decimal_pace <= 0: return "∞"
+    minutes = int(decimal_pace)
+    seconds = int((decimal_pace - minutes) * 60)
+    return f"{minutes}:{seconds:02d}"
+
 def calculate_pace_zones(best_5k_pace_min):
-    # Threshold pace (T) is usually slightly slower than 5K pace
     tp = best_5k_pace_min * 1.05 
-    
-    # Logic: Pace is min/km. 4:00 is FASTER than 5:00.
-    # We define the ranges so that the faster pace is the 'min' in the check.
+    # Return both the color and the calculated limit strings
     return [
-        {'name': 'Z5: Anaerobic', 'min': 0.0,            'max': tp * 0.99,    'color': '#9575CD'}, # Fastest
-        {'name': 'Z4: Threshold', 'min': tp * 0.99,      'max': tp * 1.06,    'color': '#1976D2'},
-        {'name': 'Z3: Tempo',     'min': tp * 1.06,      'max': tp * 1.14,    'color': '#00796B'},
-        {'name': 'Z2: Aerobic',   'min': tp * 1.14,      'max': tp * 1.29,    'color': '#2E7D32'},
-        {'name': 'Z1: Recovery',  'min': tp * 1.29,      'max': 25.0,         'color': '#455A64'}  # Slowest
+        {'name': 'Z5: Anaerobic', 'min': 0.0,       'max': tp * 0.99, 'color': '#9575CD', 'range': f"< {format_pace(tp * 0.99)}"},
+        {'name': 'Z4: Threshold', 'min': tp * 0.99, 'max': tp * 1.06, 'color': '#1976D2', 'range': f"{format_pace(tp * 0.99)} - {format_pace(tp * 1.06)}"},
+        {'name': 'Z3: Tempo',     'min': tp * 1.06, 'max': tp * 1.14, 'color': '#00796B', 'range': f"{format_pace(tp * 1.06)} - {format_pace(tp * 1.14)}"},
+        {'name': 'Z2: Aerobic',   'min': tp * 1.14, 'max': tp * 1.29, 'color': '#2E7D32', 'range': f"{format_pace(tp * 1.14)} - {format_pace(tp * 1.29)}"},
+        {'name': 'Z1: Recovery',  'min': tp * 1.29, 'max': 25.0,    'color': '#455A64', 'range': f"> {format_pace(tp * 1.29)}"}
     ]
+
+# ... rest of generate_calendar_html stays the same ...
 
 def generate_calendar_html(summary_df):
     text_color = "#E0E0E0"
