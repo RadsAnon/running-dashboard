@@ -86,7 +86,6 @@ if not summary_df.empty:
                 
                 st.markdown(f"### Baseline Performance")
                 st.markdown(f"**Reference 5K Time:** {b_min}:{b_sec:02d} | **Pace:** {format_pace(best_5k_pace)}/km")
-                st.caption("Zones below are calibrated based on this benchmark.")
             else:
                 st.caption("No 5K activities found. Using default baseline (6:00/km).")
                 best_5k_pace = 6.0
