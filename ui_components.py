@@ -71,7 +71,7 @@ def generate_calendar_html(summary_df):
     </style>
     """
     
-    html = f"<div class='cal-container'>{style}<div class='cal-header'><div>WEEK VOLUME</div>"
+    html = f"<div class='cal-container'>{style}<div class='cal-header'><div>WEEK</div>"
     for d in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]: 
         html += f"<div>{d}</div>"
     html += "</div>"
