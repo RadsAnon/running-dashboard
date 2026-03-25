@@ -84,7 +84,7 @@ if not summary_df.empty:
                 total_seconds = best_5k_pace * 5 * 60
                 b_min, b_sec = int(total_seconds // 60), int(total_seconds % 60)
                 
-                st.markdown(f"### 🏆 Baseline Performance")
+                st.markdown(f"### Baseline Performance")
                 st.markdown(f"**Reference 5K Time:** {b_min}:{b_sec:02d} | **Pace:** {format_pace(best_5k_pace)}/km")
                 st.caption("Zones below are calibrated based on this benchmark.")
             else:
