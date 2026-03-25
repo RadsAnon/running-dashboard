@@ -8,7 +8,6 @@ def format_pace(decimal_pace):
 
 def calculate_pace_zones(best_5k_pace_min):
     tp = best_5k_pace_min * 1.05 
-    # Return both the color and the calculated limit strings
     return [
         {'name': 'Z5: Anaerobic', 'min': 0.0,       'max': tp * 0.92, 'color': '#9575CD', 'range': f"< {format_pace(tp * 0.92)}"},
         {'name': 'Z4: Threshold', 'min': tp * 0.92, 'max': tp * 1.00, 'color': '#1976D2', 'range': f"{format_pace(tp * 0.92)} - {format_pace(tp * 1.00)}"},
@@ -16,8 +15,6 @@ def calculate_pace_zones(best_5k_pace_min):
         {'name': 'Z2: Aerobic',   'min': tp * 1.08, 'max': tp * 1.29, 'color': '#2E7D32', 'range': f"{format_pace(tp * 1.08)} - {format_pace(tp * 1.29)}"},
         {'name': 'Z1: Recovery',  'min': tp * 1.29, 'max': 25.0,    'color': '#455A64', 'range': f"> {format_pace(tp * 1.29)}"}
     ]
-
-# ... rest of generate_calendar_html stays the same ...
 
 def generate_calendar_html(summary_df):
     text_color = "#E0E0E0"
@@ -28,11 +25,38 @@ def generate_calendar_html(summary_df):
     <style>
         body {{ background-color: transparent; margin: 0; padding: 0; }}
         .cal-container {{ font-family: sans-serif; color: {text_color}; }}
-        
-        /* ... other styles ... */
-
+        .cal-header {{ 
+            display: grid; 
+            grid-template-columns: 140px repeat(7, 1fr); 
+            gap: 10px; 
+            font-weight: 600; 
+            color: {text_color}; 
+            opacity: 0.5; 
+            text-align: center; 
+            margin-bottom: 20px;
+            font-size: 0.75rem; 
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+        }}
+        .cal-week {{ 
+            display: grid; 
+            grid-template-columns: 140px repeat(7, 1fr); 
+            gap: 10px; 
+            margin-bottom: 20px; 
+            border-bottom: 1px solid {border_color}; 
+            padding-bottom: 15px; 
+            align-items: center;
+        }}
+        .cal-total-km {{ font-size: 1.7rem; font-weight: 800; color: #4DB6AC; }}
+        .cal-day-cell {{ 
+            text-align: center; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 75px;
+        }}
         .cal-activity-bubble {{ 
-            border-radius: 50%; /* <--- CHANGE THIS FROM 8px TO 50% */
+            border-radius: 50%; 
             background: {bubble_bg};
             display: flex; 
             align-items: center; 
@@ -40,29 +64,48 @@ def generate_calendar_html(summary_df):
             color: {text_color}; 
             font-weight: 600; 
             border: 1px solid {border_color};
-            aspect-ratio: 1 / 1; /* Ensures it stays a perfect circle */
+            aspect-ratio: 1 / 1;
+            transition: transform 0.2s ease;
         }}
+        .week-label {{ font-size: 0.65rem; text-transform: uppercase; color: {text_color}; opacity: 0.4; }}
     </style>
     """
+    
     html = f"<div class='cal-container'>{style}<div class='cal-header'><div>WEEK VOLUME</div>"
-    for d in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]: html += f"<div>{d}</div>"
+    for d in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]: 
+        html += f"<div>{d}</div>"
     html += "</div>"
     
     today = datetime.now()
+    # Ensure we align Mon-Sun correctly
     curr_week_start = today - timedelta(days=today.weekday())
     
     for i in range(5):
         w_start = curr_week_start - timedelta(weeks=i)
-        w_data = summary_df[(summary_df['date'] >= w_start.date()) & (summary_df['date'] <= (w_start + timedelta(days=6)).date())]
-        html += f"<div class='cal-week'><div><div class='week-label'>{w_start.strftime('%b %d')}</div><div class='cal-total-km'>{w_data['distance_km'].sum():.1f}</div><div class='week-label'>KM TOTAL</div></div>"
+        w_end = w_start + timedelta(days=6)
+        
+        # Filter data for this specific week
+        w_data = summary_df[(summary_df['date'] >= w_start.date()) & (summary_df['date'] <= w_end.date())]
+        total_km = w_data['distance_km'].sum()
+        
+        html += f"<div class='cal-week'>"
+        # Week Summary Column
+        html += f"<div><div class='week-label'>{w_start.strftime('%b %d')}</div><div class='cal-total-km'>{total_km:.1f}</div><div class='week-label'>KM TOTAL</div></div>"
+        
+        # Individual Day Columns
         for d_offset in range(7):
-            d_data = summary_df[summary_df['date'] == (w_start + timedelta(days=d_offset)).date()]
+            day_to_show = w_start + timedelta(days=d_offset)
+            d_data = summary_df[summary_df['date'] == day_to_show.date()]
+            
             html += "<div class='cal-day-cell'>"
             if not d_data.empty:
                 dist = d_data.iloc[0]['distance_km']
+                # Size scales between 35px and 70px based on distance
                 size = min(35 + (dist * 3), 70) 
-                html += f"<div class='cal-activity-bubble' style='width: {size}px; height: {size}px;'>{dist:.1f}</div>"
-            else: html += "<div style='opacity: 0.2;'>•</div>"
+                html += f"<div class='cal-activity-bubble' style='width: {size}px; height: {size}px; font-size: {size/3.5}px;'>{dist:.1f}</div>"
+            else: 
+                html += "<div style='opacity: 0.2;'>•</div>"
             html += "</div>"
         html += "</div>"
+        
     return html + "</div>"
