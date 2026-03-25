@@ -61,29 +61,6 @@ def get_strava_client():
 
 st.set_page_config(layout="wide", page_title="Radhika's Training Hub")
 
-# --- 1. THE CONNECTION ENGINE ---
-def get_strava_client():
-    try:
-        with open('strava_tokens.json', 'r') as f:
-            tokens = json.load(f)
-    except FileNotFoundError:
-        st.error("No tokens found! Run your 'Step 1' script first.")
-        st.stop()
-
-    client = Client()
-    
-    # Auto-refresh if the token is old
-    if time.time() > tokens['expires_at']:
-        res = client.refresh_access_token(client_id=CLIENT_ID, 
-                                         client_secret=CLIENT_SECRET, 
-                                         refresh_token=tokens['refresh_token'])
-        with open('strava_tokens.json', 'w') as f:
-            json.dump(res, f)
-        client.access_token = res['access_token']
-    else:
-        client.access_token = tokens['access_token']
-        
-    return client
 
 # --- 2. DATA LOADING ---
 @st.cache_data
