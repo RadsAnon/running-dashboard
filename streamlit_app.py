@@ -205,7 +205,6 @@ if not summary_df.empty:
         if not df_splits.empty:
             st.subheader("Split Analysis")
             
-            # Use orientation='h' for horizontal bars
             fig_splits = px.bar(
                 df_splits, 
                 x='Pace', 
@@ -214,13 +213,16 @@ if not summary_df.empty:
                 title="Pace per Kilometer",
                 labels={'Pace': 'Pace (min/km)', 'KM': 'Split'},
                 color='Pace',
-                color_continuous_scale='OrRd' # Colors get darker/redder as pace gets slower
+                color_continuous_scale='OrRd'
             )
             
-            # Standard running charts invert the X-axis for pace so 'faster' is further right,
-            # but for a bar graph, it's often more intuitive to keep 0 on the left.
-            # We will sort Y-axis to keep KM 1 at the top.
-            fig_splits.update_layout(yaxis={'categoryorder':'descending'}, showlegend=False)
+            # FIX: Explicitly target the Y-axis and use 'total descending' or 'array'
+            # To keep KM 1 at the top, we actually want to reverse the default categorical order
+            fig_splits.update_layout(
+                yaxis={'autorange': 'reversed'}, 
+                showlegend=False,
+                coloraxis_showscale=False # Keeps the UI clean on tablets
+            )
             
             st.plotly_chart(fig_splits, use_container_width=True)
 
