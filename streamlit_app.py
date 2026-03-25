@@ -1,176 +1,28 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import plotly.express as px
-import json
-import time
-from stravalib.client import Client
-from datetime import datetime, timedelta
-
-# --- 1. THE CONNECTION ENGINE ---
-def get_strava_client():
-    if "access_token" in st.secrets:
-        client_id = st.secrets["client_id"]
-        client_secret = st.secrets["client_secret"]
-        access_token = st.secrets["access_token"]
-        refresh_token = st.secrets["refresh_token"]
-        expires_at = st.secrets["expires_at"]
-    else:
-        try:
-            with open('strava_tokens.json', 'r') as f:
-                res = json.load(f)
-                client_id = res['client_id']
-                client_secret = res['client_secret']
-                access_token = res['access_token']
-                refresh_token = res['refresh_token']
-                expires_at = res['expires_at']
-        except FileNotFoundError:
-            st.error("Credentials missing. Add to Secrets or local JSON.")
-            st.stop()
-
-    client = Client()
-    client.access_token = access_token
-    client.refresh_token = refresh_token
-    client.token_expires_at = expires_at
-
-    if time.time() > expires_at:
-        new_token = client.refresh_access_token(
-            client_id=client_id, client_secret=client_secret, refresh_token=refresh_token
-        )
-        client.access_token = new_token['access_token']
-    return client
+from strava_utils import load_strava_data, get_detailed_streams
+from ui_components import calculate_pace_zones, generate_calendar_html
 
 st.set_page_config(layout="wide", page_title="Training Command Center")
 
-# --- 2. DATA LOADING ---
-@st.cache_data
-def load_2026_data():
-    client = get_strava_client()
-    activities = client.get_activities(after='2026-01-01T00:00:00Z')
-    data = []
-    for a in activities:
-        if a.type not in ['Run', 'Walk']: continue
-        try:
-            seconds = a.moving_time.total_seconds() if hasattr(a.moving_time, 'total_seconds') else float(a.moving_time)
-        except: seconds = 0
-        dist_km = float(a.distance) / 1000 if a.distance else 0
-        moving_min = seconds / 60
-        pace = moving_min / dist_km if dist_km > 0 else 0
-        data.append({
-            'id': a.id, 'name': a.name, 'date': a.start_date_local.date(),
-            'datetime': a.start_date_local, 'distance_km': dist_km,
-            'moving_time_min': moving_min, 'avg_pace': pace
-        })
-    return pd.DataFrame(data).sort_values('datetime', ascending=False)
-
-# --- 3. DYNAMIC TRAINING LOG (CALENDAR) ---
-def generate_calendar_html(summary_df):
-    style = """
-    <style>
-        .cal-container { font-family: sans-serif; color: var(--text-color, #eee); }
-        .cal-header { display: grid; grid-template-columns: 140px repeat(7, 1fr); gap: 10px; font-weight: bold; color: #888; text-align: center; margin-bottom: 20px;}
-        .cal-week { display: grid; grid-template-columns: 140px repeat(7, 1fr); gap: 10px; margin-bottom: 25px; border-bottom: 1px solid rgba(128,128,128,0.1); padding-bottom: 20px; align-items: center;}
-        .cal-total-km { font-size: 1.8rem; font-weight: 900; color: #fc4c02; }
-        .cal-day-cell { text-align: center; min-height: 100px; display: flex; align-items: center; justify-content: center; }
-        .cal-activity-bubble { 
-            border-radius: 50%; background: linear-gradient(135deg, #fc4c02 0%, #ff7a45 100%);
-            display: flex; align-items: center; justify-content: center; color: white; font-weight: 800;
-            box-shadow: 0 4px 12px rgba(252, 76, 2, 0.4); border: 2px solid rgba(255,255,255,0.2);
-        }
-        .week-label { font-size: 0.7rem; text-transform: uppercase; color: #666; letter-spacing: 1px; }
-    </style>
-    """
-    html = f"<div class='cal-container'>{style}<div class='cal-header'><div>WEEK VOLUME</div>"
-    for d in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]: html += f"<div>{d}</div>"
-    html += "</div>"
-    
-    # Start from current week Monday
-    today = datetime.now()
-    curr_week_start = today - timedelta(days=today.weekday())
-    
-    # Render 5 weeks ANTI-CHRONOLOGICALLY (latest first)
-    for i in range(5):
-        w_start = curr_week_start - timedelta(weeks=i)
-        w_end = w_start + timedelta(days=6)
-        w_data = summary_df[(summary_df['date'] >= w_start.date()) & (summary_df['date'] <= w_end.date())]
-        
-        html += f"<div class='cal-week'><div><div class='week-label'>{w_start.strftime('%b %d')}</div><div class='cal-total-km'>{w_data['distance_km'].sum():.1f}</div><div class='week-label'>KM TOTAL</div></div>"
-        
-        for d_offset in range(7):
-            day_to_show = w_start + timedelta(days=d_offset)
-            d_data = summary_df[summary_df['date'] == day_to_show.date()]
-            html += "<div class='cal-day-cell'>"
-            if not d_data.empty:
-                dist = d_data.iloc[0]['distance_km']
-                # PROMINENT SIZING: Base 40 + 5 per km
-                size = min(20 + (dist * 5), 100) 
-                html += f"<div class='cal-activity-bubble' style='width: {size}px; height: {size}px; font-size: {max(0.8, size/70)}rem;'>{dist:.1f}</div>"
-            else: html += "<div style='color:#333; font-size:1.5rem;'>•</div>"
-            html += "</div>"
-        html += "</div>"
-    return html + "</div>"
-
-# --- 4. HEADER LAYOUT (TOP RIGHT BUTTON) ---
+# --- SYNC BUTTON ---
 col_title, col_sync = st.columns([4, 1])
-
-with col_title:
-    st.title("🏃 Training Command Center")
-
+with col_title: st.title("🏃 Training Command Center")
 with col_sync:
-    # Placing button in the right-most column
     if st.button('🔄 Sync Data', use_container_width=True):
         st.cache_data.clear()
         st.rerun()
 
-@st.cache_data
-def get_detailed_streams(activity_id):
-    try:
-        client = get_strava_client()
-        # Fetching the raw GPS/Time data from Strava
-        streams = client.get_activity_streams(activity_id, types=['time', 'distance', 'altitude'], resolution='medium')
-        
-        if not streams or 'time' not in streams:
-            return pd.DataFrame()
-
-        df = pd.DataFrame({
-            'time': streams['time'].data, 
-            'dist_m': streams['distance'].data,
-            'ele': streams['altitude'].data if 'altitude' in streams else 0
-        })
-        
-        df['dist_km'] = df['dist_m'] / 1000
-        # Calculate pace smoothing for the 'Live Profile' chart
-        df['pace_raw'] = (df['time'].diff() / 60) / (df['dist_m'].diff() / 1000)
-        df['pace_smooth'] = df['pace_raw'].rolling(window=15, min_periods=1).mean()
-        
-        return df.fillna(0)
-    except Exception as e:
-        st.error(f"Error fetching activity details: {e}")
-        return pd.DataFrame()
-# Zone calculations         
-def calculate_pace_zones(best_5k_pace_min):
-    # Standard threshold scaling (5K pace is roughly 100-105% of Threshold)
-    threshold_pace = best_5k_pace_min * 1.05 
-    
-    return [
-        {'name': 'Z1: Recovery',  'min': threshold_pace * 1.29, 'max': 20.0, 'color': '#d1d1d1'},
-        {'name': 'Z2: Aerobic',   'min': threshold_pace * 1.14, 'max': threshold_pace * 1.29, 'color': '#2eb82e'},
-        {'name': 'Z3: Tempo',     'min': threshold_pace * 1.06, 'max': threshold_pace * 1.14, 'color': '#ffcc00'},
-        {'name': 'Z4: Threshold', 'min': threshold_pace * 0.99, 'max': threshold_pace * 1.06, 'color': '#ff8000'},
-        {'name': 'Z5: Anaerobic', 'min': 0.0, 'max': threshold_pace * 0.99, 'color': '#ff3300'}
-    ]
-# --- 5. MAIN TABS ---
-summary_df = load_2026_data()
+summary_df = load_strava_data()
 
 if not summary_df.empty:
     tab1, tab2, tab3 = st.tabs(["📅 Training Log", "📈 Global Trends", "🔍 Activity Details"])
 
     with tab1:
-        # Latest week is now at the top automatically
-        st.components.v1.html(generate_calendar_html(summary_df), height=800, scrolling=True)
+        st.components.v1.html(generate_calendar_html(summary_df), height=650, scrolling=True)
 
     with tab2:
-        st.subheader("2026 Performance Trends")
         c1, c2 = st.columns(2)
         with c1:
             st.plotly_chart(px.bar(summary_df, x='date', y='distance_km', title="Daily Mileage", color_discrete_sequence=['#fc4c02']), use_container_width=True)
@@ -180,147 +32,48 @@ if not summary_df.empty:
             st.plotly_chart(fig_p, use_container_width=True)
 
     with tab3:
-        # 1. Activity Selector
         options = {f"{r['date']} - {r['name']}": r['id'] for _, r in summary_df.iterrows()}
-        selection = st.selectbox("Pick an activity to analyze:", list(options.keys()))
-        
-        # 2. Key Metrics Header
+        selection = st.selectbox("Pick an activity:", list(options.keys()))
         run_stats = summary_df[summary_df['id'] == options[selection]].iloc[0]
+        
         m1, m2, m3 = st.columns(3)
-        m1.metric("Total Distance", f"{run_stats['distance_km']:.2f} km")
-        m2.metric("Moving Time", f"{run_stats['moving_time_min']:.1f} min")
-        m3.metric("Avg Pace", f"{run_stats['avg_pace']:.2f} min/km")
+        m1.metric("Distance", f"{run_stats['distance_km']:.2f} km")
+        m2.metric("Time", f"{run_stats['moving_time_min']:.1f} min")
+        m3.metric("Pace", f"{run_stats['avg_pace']:.2f} /km")
 
-        st.divider()
-
-        # 3. KM Splits Calculation
-        # We use the detailed streams to find the time at each kilometer mark
         run_data = get_detailed_streams(options[selection])
         
-        # Create 'KM' bins
-        run_data['km_bin'] = (run_data['dist_km']).astype(int) + 1
-        
-        # Group by bin to find the time taken for each specific KM
-        splits = []
-        # Only keep splits that have a meaningful amount of data
-        for km, group in run_data.groupby('km_bin'):
-            dist_in_km = (group['dist_m'].max() - group['dist_m'].min()) / 1000
-            if dist_in_km > 0.1: # Only count if the split is at least 100m
-                time_taken = group['time'].max() - group['time'].min()
-                pace_min = time_taken / 60 / dist_in_km
-                splits.append({'KM': f"KM {km}", 'Pace': pace_min})
-        
-        df_splits = pd.DataFrame(splits)
-
-        # 4. Horizontal Bar Graph: Pace Splits
-        # 4. Horizontal Bar Graph: Pace Splits with Direct Labels
-        if not df_splits.empty:
-            st.subheader("Split Analysis")
+        if not run_data.empty:
+            # 1. Splits Chart
+            run_data['km_bin'] = (run_data['dist_km']).astype(int) + 1
+            splits = []
+            for km, group in run_data.groupby('km_bin'):
+                dist = (group['dist_m'].max() - group['dist_m'].min()) / 1000
+                if dist > 0.1:
+                    pace = (group['time'].max() - group['time'].min()) / 60 / dist
+                    splits.append({'KM': f"KM {km}", 'Pace': pace})
             
-            # Format the pace to 2 decimal places for the labels
+            df_splits = pd.DataFrame(splits)
             df_splits['label'] = df_splits['Pace'].apply(lambda x: f"{x:.2f}")
 
-            fig_splits = px.bar(
-                df_splits, 
-                x='Pace', 
-                y='KM', 
-                orientation='h',
-                text='label', # This prints the pace at the tip of the bar
-                title="Pace per Kilometer",
-                labels={'Pace': 'Pace (min/km)', 'KM': 'Split'},
-                color_discrete_sequence=['#fc4c02'] # Solid Strava Orange for all bars
-            )
-            
-            # Formatting for the labels and layout
-            fig_splits.update_traces(
-                textposition='outside', # Places the number at the tip
-                cliponaxis=False,       # Ensures the number isn't cut off
-                textfont_size=14,        # Makes it readable on a tablet
-                marker_line_color='rgba(0,0,0,0)', # Removes outlines for a cleaner look
-                marker_line_width=0
-            )
-            
-            fig_splits.update_layout(
-                yaxis={'autorange': 'reversed'}, 
-                xaxis_title="Pace (min/km)",
-                yaxis_title=None,
-                showlegend=False,
-                margin=dict(l=20, r=50, t=40, b=20), # Extra right margin for the text labels
-                height=400 # Adjust height based on how many KMs you usually run
-            )
-            
+            fig_splits = px.bar(df_splits, x='Pace', y='KM', orientation='h', text='label', title="Pace Splits", color_discrete_sequence=['#fc4c02'])
+            fig_splits.update_layout(yaxis={'autorange': 'reversed'}, margin=dict(r=50))
             st.plotly_chart(fig_splits, use_container_width=True)
 
-        
-
-        # 5. Continuous Pace Profile (The area chart you had before)
-        st.subheader("Live Pace Profile")
-        f_pace = px.area(run_data, x='dist_km', y='pace_smooth', title="Continuous Pace (min/km)", color_discrete_sequence=['#fc4c02'])
-        f_pace.update_yaxes(autorange="reversed") # Invert so "faster" (lower number) is higher up
-        st.plotly_chart(f_pace, use_container_width=True)
-
-        # 1. AUTO-CALIBRATION: Find the fastest 5K of 2026
-        # Filtering for runs close to 5km to find a "best effort"
-        runs_near_5k = summary_df[summary_df['distance_km'].between(4.9, 5.5)]
-        if not runs_near_5k.empty:
-            best_5k_pace = runs_near_5k['avg_pace'].min()
-            st.caption(f"🛡️ Zones auto-calibrated using your best 2026 5K pace: **{best_5k_pace:.2f} min/km**")
-        else:
-            best_5k_pace = 6.0  # Fallback if no 5K found
-            st.caption("⚠️ No 5K reference found. Using default 6:00 min/km for zones.")
-
-        # 2. GENERATE DYNAMIC ZONES
-        current_zones = calculate_pace_zones(best_5k_pace)
-
-        def get_dynamic_zone(pace):
-            for z in current_zones:
-                if z['min'] <= pace < z['max']:
-                    return z['name']
-            return 'Other'
-
-        # 3. APPLY TO CURRENT ACTIVITY
-        run_data['zone'] = run_data['pace_smooth'].apply(get_dynamic_zone)
-        # 4. GROUP DATA BY ZONE
-        # Assuming each row in run_data is roughly 1 second of activity
-        zone_time = run_data.groupby('zone')['time'].count().reset_index()
-        zone_time['minutes'] = zone_time['time'] / 60
-        zone_time['percent'] = (zone_time['minutes'] / zone_time['minutes'].sum()) * 100
-
-        # Ensure zones are ordered correctly (Z1 at top, Z5 at bottom, or vice versa)
-        zone_order = [z['name'] for z in current_zones]
-        zone_time['zone'] = pd.Categorical(zone_time['zone'], categories=zone_order, ordered=True)
-        zone_time = zone_time.sort_values('zone')
-
-        # Create a color map using the colors defined in your calculate_pace_zones function
-        color_map = {z['name']: z['color'] for z in current_zones}
-
-        # 5. RENDER THE INTENSITY CHART
-        st.divider()
-        st.subheader("Intensity Distribution")
-        
-        fig_zones = px.bar(
-            zone_time,
-            x='percent',
-            y='zone',
-            orientation='h',
-            text=zone_time['minutes'].apply(lambda x: f"{x:.1f} min"),
-            labels={'percent': '% of Total Run', 'zone': ''},
-            color='zone',
-            color_discrete_map=color_map
-        )
-
-        fig_zones.update_traces(textposition='auto', textfont_size=14)
-        fig_zones.update_layout(
-            showlegend=False,
-            xaxis_ticksuffix="%",
-            xaxis_range=[0, 100],
-            height=350,
-            margin=dict(l=20, r=20, t=40, b=20)
-        )
-
-        st.plotly_chart(fig_zones, use_container_width=True)
-        
-        # ... [Rest of your zone grouping and Plotly code from the previous step] ...
-        # (Make sure your Plotly code uses 'current_zones' for the color map!)
+            # 2. Zone Analysis
+            runs_near_5k = summary_df[summary_df['distance_km'].between(4.9, 5.5)]
+            best_5k = runs_near_5k['avg_pace'].min() if not runs_near_5k.empty else 6.0
+            current_zones = calculate_pace_zones(best_5k)
+            
+            run_data['zone'] = run_data['pace_smooth'].apply(
+                lambda p: next((z['name'] for z in current_zones if z['min'] <= p < z['max']), 'Other')
+            )
+            
+            zone_time = run_data.groupby('zone')['time'].count().reset_index()
+            zone_time['percent'] = (zone_time['time'] / zone_time['time'].sum()) * 100
+            
+            fig_zones = px.bar(zone_time, x='percent', y='zone', orientation='h', title="Intensity Zones",
+                               color='zone', color_discrete_map={z['name']: z['color'] for z in current_zones})
+            st.plotly_chart(fig_zones, use_container_width=True)
 else:
-    st.info("No activities found for 2026. Time for a run?")
+    st.info("No activities found for 2026.")
