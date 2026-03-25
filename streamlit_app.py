@@ -40,7 +40,6 @@ if not summary_df.empty:
             fig_p.update_traces(line_color="#90A4AE", line_width=3)
             fig_p.update_yaxes(autorange="reversed")
             st.plotly_chart(fig_p, use_container_width=True)
-
     with tab3:
         options = {f"{r['date']} - {r['name']}": r['id'] for _, r in summary_df.iterrows()}
         selection = st.selectbox("Pick an activity:", list(options.keys()))
