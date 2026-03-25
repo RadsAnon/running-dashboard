@@ -42,4 +42,10 @@ def generate_calendar_html(summary_df):
             d_data = summary_df[summary_df['date'] == (w_start + timedelta(days=d_offset)).date()]
             html += "<div class='cal-day-cell'>"
             if not d_data.empty:
-                dist = d_data.iloc[0]['distance
+                dist = d_data.iloc[0]['distance_km']
+                size = min(35 + (dist * 3), 70) 
+                html += f"<div class='cal-activity-bubble' style='width: {size}px; height: {size}px;'>{dist:.1f}</div>"
+            else: html += "<div style='opacity: 0.2;'>•</div>"
+            html += "</div>"
+        html += "</div>"
+    return html + "</div>"
