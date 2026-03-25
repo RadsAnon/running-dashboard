@@ -56,20 +56,6 @@ if not summary_df.empty:
 
         st.divider()
 
-        # --- BEST 5K CALCULATION ---
-        runs_near_5k = summary_df[summary_df['distance_km'].between(4.8, 5.5)]
-        if not runs_near_5k.empty:
-            best_5k_pace = runs_near_5k['avg_pace'].min()
-            total_seconds = best_5k_pace * 5 * 60
-            b_min, b_sec = int(total_seconds // 60), int(total_seconds % 60)
-            
-            st.markdown(f"### 🏆 Baseline Performance")
-            st.markdown(f"**Reference 5K Time:** {b_min}:{b_sec:02d} | **Pace:** {format_pace(best_5k_pace)}/km")
-            st.caption("Zones below are calibrated based on this benchmark.")
-        else:
-            st.caption("No 5K activities found. Using default baseline (6:00/km).")
-            best_5k_pace = 6.0
-
         run_data = get_detailed_streams(options[selection])
         if not run_data.empty:
             # --- 1. PACE SPLITS CHART (FIXED) ---
@@ -91,7 +77,20 @@ if not summary_df.empty:
             st.plotly_chart(fig_splits, use_container_width=True)
 
             st.divider()
-
+        # --- BEST 5K CALCULATION ---
+            runs_near_5k = summary_df[summary_df['distance_km'].between(4.8, 5.5)]
+            if not runs_near_5k.empty:
+                best_5k_pace = runs_near_5k['avg_pace'].min()
+                total_seconds = best_5k_pace * 5 * 60
+                b_min, b_sec = int(total_seconds // 60), int(total_seconds % 60)
+                
+                st.markdown(f"### 🏆 Baseline Performance")
+                st.markdown(f"**Reference 5K Time:** {b_min}:{b_sec:02d} | **Pace:** {format_pace(best_5k_pace)}/km")
+                st.caption("Zones below are calibrated based on this benchmark.")
+            else:
+                st.caption("No 5K activities found. Using default baseline (6:00/km).")
+                best_5k_pace = 6.0
+                
             # --- 2. INTENSITY ZONES CHART ---
             current_zones = calculate_pace_zones(best_5k_pace)
             # Create labels that include the range: "Z3: Tempo (5:00-5:30)"
