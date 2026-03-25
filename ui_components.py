@@ -2,30 +2,30 @@ from datetime import datetime, timedelta
 import pandas as pd
 
 def calculate_pace_zones(best_5k_pace_min):
-    # 5K pace is roughly 105% of threshold
     threshold_pace = best_5k_pace_min * 1.05 
     return [
-        {'name': 'Z1: Recovery',  'min': threshold_pace * 1.29, 'max': 20.0, 'color': '#d1d1d1'},
-        {'name': 'Z2: Aerobic',   'min': threshold_pace * 1.14, 'max': threshold_pace * 1.29, 'color': '#2eb82e'},
-        {'name': 'Z3: Tempo',     'min': threshold_pace * 1.06, 'max': threshold_pace * 1.14, 'color': '#ffcc00'},
-        {'name': 'Z4: Threshold', 'min': threshold_pace * 0.99, 'max': threshold_pace * 1.06, 'color': '#ff8000'},
-        {'name': 'Z5: Anaerobic', 'min': 0.0, 'max': threshold_pace * 0.99, 'color': '#ff3300'}
+        {'name': 'Z1: Recovery',  'min': threshold_pace * 1.29, 'max': 20.0, 'color': '#455A64'}, # Blue-Grey
+        {'name': 'Z2: Aerobic',   'min': threshold_pace * 1.14, 'max': threshold_pace * 1.29, 'color': '#2E7D32'}, # Deep Green
+        {'name': 'Z3: Tempo',     'min': threshold_pace * 1.06, 'max': threshold_pace * 1.14, 'color': '#F9A825'}, # Amber/Gold
+        {'name': 'Z4: Threshold', 'min': threshold_pace * 0.99, 'max': threshold_pace * 1.06, 'color': '#EF6C00'}, # Muted Orange
+        {'name': 'Z5: Anaerobic', 'min': 0.0, 'max': threshold_pace * 0.99, 'color': '#C62828'}  # Deep Oxide Red
     ]
 
 def generate_calendar_html(summary_df):
+    # Matches the "Dark Mode" aesthetic with lower brightness bubbles
     style = """
     <style>
-        .cal-container { font-family: sans-serif; color: #eee; }
-        .cal-header { display: grid; grid-template-columns: 140px repeat(7, 1fr); gap: 10px; font-weight: bold; color: #888; text-align: center; margin-bottom: 20px;}
-        .cal-week { display: grid; grid-template-columns: 140px repeat(7, 1fr); gap: 10px; margin-bottom: 25px; border-bottom: 1px solid rgba(128,128,128,0.1); padding-bottom: 20px; align-items: center;}
-        .cal-total-km { font-size: 1.8rem; font-weight: 900; color: #fc4c02; }
+        .cal-container { font-family: 'Inter', sans-serif; color: #E0E0E0; background-color: #0E1117; }
+        .cal-header { display: grid; grid-template-columns: 140px repeat(7, 1fr); gap: 10px; font-weight: 600; color: #616161; text-align: center; margin-bottom: 20px;}
+        .cal-week { display: grid; grid-template-columns: 140px repeat(7, 1fr); gap: 10px; margin-bottom: 25px; border-bottom: 1px solid #262730; padding-bottom: 20px; align-items: center;}
+        .cal-total-km { font-size: 1.8rem; font-weight: 800; color: #D84315; }
         .cal-day-cell { text-align: center; min-height: 80px; display: flex; align-items: center; justify-content: center; }
         .cal-activity-bubble { 
-            border-radius: 50%; background: linear-gradient(135deg, #fc4c02 0%, #ff7a45 100%);
-            display: flex; align-items: center; justify-content: center; color: white; font-weight: 800;
-            box-shadow: 0 4px 12px rgba(252, 76, 2, 0.4);
+            border-radius: 50%; background: linear-gradient(135deg, #BF360C 0%, #E64A19 100%);
+            display: flex; align-items: center; justify-content: center; color: white; font-weight: 700;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
         }
-        .week-label { font-size: 0.7rem; text-transform: uppercase; color: #666; }
+        .week-label { font-size: 0.7rem; text-transform: uppercase; color: #757575; }
     </style>
     """
     html = f"<div class='cal-container'>{style}<div class='cal-header'><div>WEEK VOLUME</div>"
@@ -48,9 +48,9 @@ def generate_calendar_html(summary_df):
             html += "<div class='cal-day-cell'>"
             if not d_data.empty:
                 dist = d_data.iloc[0]['distance_km']
-                size = min(30 + (dist * 4), 90) 
+                size = min(35 + (dist * 4), 85) 
                 html += f"<div class='cal-activity-bubble' style='width: {size}px; height: {size}px;'>{dist:.1f}</div>"
-            else: html += "<div style='color:#444;'>•</div>"
+            else: html += "<div style='color:#333;'>•</div>"
             html += "</div>"
         html += "</div>"
     return html + "</div>"
