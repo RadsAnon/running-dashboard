@@ -103,7 +103,7 @@ def generate_calendar_html(summary_df):
             if not d_data.empty:
                 dist = d_data.iloc[0]['distance_km']
                 # PROMINENT SIZING: Base 40 + 5 per km
-                size = min(40 + (dist * 5), 100) 
+                size = min(20 + (dist * 5), 100) 
                 html += f"<div class='cal-activity-bubble' style='width: {size}px; height: {size}px; font-size: {max(0.8, size/70)}rem;'>{dist:.1f}</div>"
             else: html += "<div style='color:#333; font-size:1.5rem;'>•</div>"
             html += "</div>"
