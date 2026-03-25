@@ -143,58 +143,58 @@ if not summary_df.empty:
             st.plotly_chart(fig_p, use_container_width=True)
 
     with tab3:
-            # 1. Activity Selector
-            options = {f"{r['date']} - {r['name']}": r['id'] for _, r in summary_df.iterrows()}
-            selection = st.selectbox("Pick an activity to analyze:", list(options.keys()))
+        # 1. Activity Selector
+        options = {f"{r['date']} - {r['name']}": r['id'] for _, r in summary_df.iterrows()}
+        selection = st.selectbox("Pick an activity to analyze:", list(options.keys()))
+        
+        # 2. Key Metrics Header
+        run_stats = summary_df[summary_df['id'] == options[selection]].iloc[0]
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Total Distance", f"{run_stats['distance_km']:.2f} km")
+        m2.metric("Moving Time", f"{run_stats['moving_time_min']:.1f} min")
+        m3.metric("Avg Pace", f"{run_stats['avg_pace']:.2f} min/km")
+
+        st.divider()
+
+        # 3. KM Splits Calculation
+        # We use the detailed streams to find the time at each kilometer mark
+        run_data = get_detailed_streams(options[selection])
+        
+        # Create 'KM' bins
+        run_data['km_bin'] = (run_data['dist_km']).astype(int) + 1
+        
+        # Group by bin to find the time taken for each specific KM
+        splits = []
+        for km, group in run_data.groupby('km_bin'):
+            if len(group) > 1:
+                time_taken = group['time'].max() - group['time'].min()
+                pace_min = time_taken / 60
+                splits.append({'KM': f"KM {km}", 'Pace': pace_min})
+        
+        df_splits = pd.DataFrame(splits)
+
+        # 4. Horizontal Bar Graph: Pace Splits
+        if not df_splits.empty:
+            st.subheader("Split Analysis")
             
-            # 2. Key Metrics Header
-            run_stats = summary_df[summary_df['id'] == options[selection]].iloc[0]
-            m1, m2, m3 = st.columns(3)
-            m1.metric("Total Distance", f"{run_stats['distance_km']:.2f} km")
-            m2.metric("Moving Time", f"{run_stats['moving_time_min']:.1f} min")
-            m3.metric("Avg Pace", f"{run_stats['avg_pace']:.2f} min/km")
-    
-            st.divider()
-    
-            # 3. KM Splits Calculation
-            # We use the detailed streams to find the time at each kilometer mark
-            run_data = get_detailed_streams(options[selection])
+            # Use orientation='h' for horizontal bars
+            fig_splits = px.bar(
+                df_splits, 
+                x='Pace', 
+                y='KM', 
+                orientation='h',
+                title="Pace per Kilometer",
+                labels={'Pace': 'Pace (min/km)', 'KM': 'Split'},
+                color='Pace',
+                color_continuous_scale='OrRd' # Colors get darker/redder as pace gets slower
+            )
             
-            # Create 'KM' bins
-            run_data['km_bin'] = (run_data['dist_km']).astype(int) + 1
+            # Standard running charts invert the X-axis for pace so 'faster' is further right,
+            # but for a bar graph, it's often more intuitive to keep 0 on the left.
+            # We will sort Y-axis to keep KM 1 at the top.
+            fig_splits.update_layout(yaxis={'categoryorder':'descending'}, showlegend=False)
             
-            # Group by bin to find the time taken for each specific KM
-            splits = []
-            for km, group in run_data.groupby('km_bin'):
-                if len(group) > 1:
-                    time_taken = group['time'].max() - group['time'].min()
-                    pace_min = time_taken / 60
-                    splits.append({'KM': f"KM {km}", 'Pace': pace_min})
-            
-            df_splits = pd.DataFrame(splits)
-    
-            # 4. Horizontal Bar Graph: Pace Splits
-            if not df_splits.empty:
-                st.subheader("Split Analysis")
-                
-                # Use orientation='h' for horizontal bars
-                fig_splits = px.bar(
-                    df_splits, 
-                    x='Pace', 
-                    y='KM', 
-                    orientation='h',
-                    title="Pace per Kilometer",
-                    labels={'Pace': 'Pace (min/km)', 'KM': 'Split'},
-                    color='Pace',
-                    color_continuous_scale='OrRd' # Colors get darker/redder as pace gets slower
-                )
-                
-                # Standard running charts invert the X-axis for pace so 'faster' is further right,
-                # but for a bar graph, it's often more intuitive to keep 0 on the left.
-                # We will sort Y-axis to keep KM 1 at the top.
-                fig_splits.update_layout(yaxis={'categoryorder':'descending'}, showlegend=False)
-                
-                st.plotly_chart(fig_splits, use_container_width=True)
+            st.plotly_chart(fig_splits, use_container_width=True)
 
         # 5. Continuous Pace Profile (The area chart you had before)
         st.subheader("Live Pace Profile")
