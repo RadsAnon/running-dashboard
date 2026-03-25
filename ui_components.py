@@ -10,10 +10,10 @@ def calculate_pace_zones(best_5k_pace_min):
     tp = best_5k_pace_min * 1.05 
     # Return both the color and the calculated limit strings
     return [
-        {'name': 'Z5: Anaerobic', 'min': 0.0,       'max': tp * 0.92, 'color': '#9575CD', 'range': f"< {format_pace(tp * 0.99)}"},
-        {'name': 'Z4: Threshold', 'min': tp * 0.92, 'max': tp * 1.00, 'color': '#1976D2', 'range': f"{format_pace(tp * 0.99)} - {format_pace(tp * 1.06)}"},
-        {'name': 'Z3: Tempo',     'min': tp * 1.00, 'max': tp * 1.08, 'color': '#00796B', 'range': f"{format_pace(tp * 1.06)} - {format_pace(tp * 1.14)}"},
-        {'name': 'Z2: Aerobic',   'min': tp * 1.08, 'max': tp * 1.29, 'color': '#2E7D32', 'range': f"{format_pace(tp * 1.14)} - {format_pace(tp * 1.29)}"},
+        {'name': 'Z5: Anaerobic', 'min': 0.0,       'max': tp * 0.92, 'color': '#9575CD', 'range': f"< {format_pace(tp * 0.92)}"},
+        {'name': 'Z4: Threshold', 'min': tp * 0.92, 'max': tp * 1.00, 'color': '#1976D2', 'range': f"{format_pace(tp * 0.92)} - {format_pace(tp * 1.00)}"},
+        {'name': 'Z3: Tempo',     'min': tp * 1.00, 'max': tp * 1.08, 'color': '#00796B', 'range': f"{format_pace(tp * 1.00)} - {format_pace(tp * 1.08)}"},
+        {'name': 'Z2: Aerobic',   'min': tp * 1.08, 'max': tp * 1.29, 'color': '#2E7D32', 'range': f"{format_pace(tp * 1.08)} - {format_pace(tp * 1.29)}"},
         {'name': 'Z1: Recovery',  'min': tp * 1.29, 'max': 25.0,    'color': '#455A64', 'range': f"> {format_pace(tp * 1.29)}"}
     ]
 
