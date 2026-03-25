@@ -280,6 +280,45 @@ if not summary_df.empty:
 
         # 3. APPLY TO CURRENT ACTIVITY
         run_data['zone'] = run_data['pace_smooth'].apply(get_dynamic_zone)
+        # 4. GROUP DATA BY ZONE
+        # Assuming each row in run_data is roughly 1 second of activity
+        zone_time = run_data.groupby('zone')['time'].count().reset_index()
+        zone_time['minutes'] = zone_time['time'] / 60
+        zone_time['percent'] = (zone_time['minutes'] / zone_time['minutes'].sum()) * 100
+
+        # Ensure zones are ordered correctly (Z1 at top, Z5 at bottom, or vice versa)
+        zone_order = [z['name'] for z in current_zones]
+        zone_time['zone'] = pd.Categorical(zone_time['zone'], categories=zone_order, ordered=True)
+        zone_time = zone_time.sort_values('zone')
+
+        # Create a color map using the colors defined in your calculate_pace_zones function
+        color_map = {z['name']: z['color'] for z in current_zones}
+
+        # 5. RENDER THE INTENSITY CHART
+        st.divider()
+        st.subheader("Intensity Distribution")
+        
+        fig_zones = px.bar(
+            zone_time,
+            x='percent',
+            y='zone',
+            orientation='h',
+            text=zone_time['minutes'].apply(lambda x: f"{x:.1f} min"),
+            labels={'percent': '% of Total Run', 'zone': ''},
+            color='zone',
+            color_discrete_map=color_map
+        )
+
+        fig_zones.update_traces(textposition='auto', textfont_size=14)
+        fig_zones.update_layout(
+            showlegend=False,
+            xaxis_ticksuffix="%",
+            xaxis_range=[0, 100],
+            height=350,
+            margin=dict(l=20, r=20, t=40, b=20)
+        )
+
+        st.plotly_chart(fig_zones, use_container_width=True)
         
         # ... [Rest of your zone grouping and Plotly code from the previous step] ...
         # (Make sure your Plotly code uses 'current_zones' for the color map!)
