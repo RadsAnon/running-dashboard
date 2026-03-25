@@ -9,7 +9,10 @@ from datetime import datetime, timedelta
 import plotly.express as px
 
 def get_strava_client():
-    # We pull the token data from Secrets instead of 'strava_tokens.json'
+    # 1. Pull EVERYTHING from the Streamlit Secrets vault
+    client_id = st.secrets["client_id"]
+    client_secret = st.secrets["client_secret"]
+    
     tokens = {
         "access_token": st.secrets["access_token"],
         "refresh_token": st.secrets["refresh_token"],
@@ -17,9 +20,24 @@ def get_strava_client():
     }
     
     client = Client()
-    # Logic to refresh stays the same, but we'll print a warning 
-    # since we can't easily "write" back to secrets from the cloud.
+    
+    # 2. Tell the client who it is (ID/Secret) and give it the current token
     client.access_token = tokens["access_token"]
+    client.refresh_token = tokens["refresh_token"]
+    client.token_expires_at = tokens["expires_at"]
+
+    # 3. Handle the refresh logic using the ID and Secret
+    import time
+    if time.time() > tokens["expires_at"]:
+        new_token = client.refresh_access_token(
+            client_id=client_id,
+            client_secret=client_secret,
+            refresh_token=tokens["refresh_token"]
+        )
+        # On the cloud, we can't easily save this back to a file, 
+        # so the app just uses the 'new_token' for this session.
+        client.access_token = new_token['access_token']
+        
     return client
 
 st.set_page_config(layout="wide", page_title="Radhika's Training Hub")
