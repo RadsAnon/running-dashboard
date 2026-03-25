@@ -122,6 +122,32 @@ with col_sync:
         st.cache_data.clear()
         st.rerun()
 
+@st.cache_data
+def get_detailed_streams(activity_id):
+    try:
+        client = get_strava_client()
+        # Fetching the raw GPS/Time data from Strava
+        streams = client.get_activity_streams(activity_id, types=['time', 'distance', 'altitude'], resolution='medium')
+        
+        if not streams or 'time' not in streams:
+            return pd.DataFrame()
+
+        df = pd.DataFrame({
+            'time': streams['time'].data, 
+            'dist_m': streams['distance'].data,
+            'ele': streams['altitude'].data if 'altitude' in streams else 0
+        })
+        
+        df['dist_km'] = df['dist_m'] / 1000
+        # Calculate pace smoothing for the 'Live Profile' chart
+        df['pace_raw'] = (df['time'].diff() / 60) / (df['dist_m'].diff() / 1000)
+        df['pace_smooth'] = df['pace_raw'].rolling(window=15, min_periods=1).mean()
+        
+        return df.fillna(0)
+    except Exception as e:
+        st.error(f"Error fetching activity details: {e}")
+        return pd.DataFrame()
+
 # --- 5. MAIN TABS ---
 summary_df = load_2026_data()
 
@@ -165,10 +191,12 @@ if not summary_df.empty:
         
         # Group by bin to find the time taken for each specific KM
         splits = []
+        # Only keep splits that have a meaningful amount of data
         for km, group in run_data.groupby('km_bin'):
-            if len(group) > 1:
+            dist_in_km = (group['dist_m'].max() - group['dist_m'].min()) / 1000
+            if dist_in_km > 0.1: # Only count if the split is at least 100m
                 time_taken = group['time'].max() - group['time'].min()
-                pace_min = time_taken / 60
+                pace_min = time_taken / 60 / dist_in_km
                 splits.append({'KM': f"KM {km}", 'Pace': pace_min})
         
         df_splits = pd.DataFrame(splits)
