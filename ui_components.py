@@ -124,7 +124,7 @@ def generate_calendar_html(summary_df):
             if not d_data.empty:
                 dist = d_data.iloc[0]['distance_km']
                 # Compact scaling: 28px to 55px
-                size = min(15 + (dist * 2.2), 55) 
+                size = min(28 + (dist * 2.2), 55) 
                 html += f"<div class='cal-activity-bubble' style='width: {size}px; height: {size}px; font-size: {max(9, size/3.2)}px;'>{dist:.1f}</div>"
             else: 
                 html += "<div style='opacity: 0.1;'>•</div>"
