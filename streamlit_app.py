@@ -128,16 +128,24 @@ if not summary_df.empty:
 
         if not trend_df.empty:
             # Rolling Weekly Average
+            st.divider()
+            tm1, tm2, tm3 = st.columns(3)
+            total_km = trend_df['distance_km'].sum()
+            tm1.metric("Total Distance", f"{total_km:.1f} km")
+            days_range = max(1, (end_sel - start_sel).days)
+            tm2.metric("Weekly Avg", f"{(total_km / days_range * 7):.1f} km")
+            tm3.metric("Avg Pace", f"{format_pace(trend_df['avg_pace'].mean())} /km")
+            st.divider()
+            
             trend_df['weekly_avg'] = trend_df.set_index(pd.to_datetime(trend_df['date']))['avg_pace']\
                                              .rolling(window='7D').mean().values
-            
             c1, c2 = st.columns(2)
             with c1:
                 st.plotly_chart(px.bar(trend_df, x='date', y='distance_km', title="Daily Mileage", 
                                        color_discrete_sequence=['#4DB6AC'], template="plotly_dark"), use_container_width=True)
             with c2:
                 fig_p = go.Figure()
-                fig_p.add_trace(go.Scatter(x=trend_df['date'], y=trend_df['avg_pace'], mode='markers', 
+                fig_p.add_trace(go.Scatter(x=trend_df['date'], y=trend_df['avg_pace'], mode='lines', 
                                            marker=dict(color='rgba(144, 164, 174, 0.4)'), name="Raw"))
                 fig_p.add_trace(go.Scatter(x=trend_df['date'], y=trend_df['weekly_avg'], mode='lines', 
                                            line=dict(color='#4DB6AC', width=3, shape='spline'), name="7-Day Trend"))
