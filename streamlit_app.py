@@ -98,8 +98,8 @@ if not summary_df.empty:
                 st.subheader("Pace Analysis: Continuous vs Splits")
                 
                 # Setup dynamic bounds
-                graph_floor = df_splits['pace'].max() + 0.5
-                graph_ceiling = run_data['pace_smooth'].min() - 0.2
+                graph_floor = 9.0
+                graph_ceiling = 5.0
                 
                 fig = go.Figure()
 
