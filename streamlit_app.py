@@ -118,81 +118,86 @@ if not summary_df.empty:
             st.plotly_chart(fig_zones, use_container_width=True)
     # --- TAB 3: GLOBAL TRENDS (With Integrated Filter) ---
     with tab3:
-        st.subheader("Filter Training Period")
-        max_date = summary_df['date'].max()
-        min_date = summary_df['date'].min()
-
-        d1, d2 = st.columns(2)
-        start_sel = d1.date_input("Start Date", max_date - timedelta(days=30), key="ts")
-        end_sel = d2.date_input("End Date", max_date, key="te")
-
-        # 1. Filter and Reindex to fill missing days
-        all_days = pd.date_range(start_sel, end_sel).date
-        mask = (summary_df['date'] >= start_sel) & (summary_df['date'] <= end_sel)
+        st.subheader("Global Trends")
         
-        # Create a base dataframe with every day in the range
-        full_range_df = pd.DataFrame({'date': all_days})
-        trend_df = pd.merge(full_range_df, summary_df.loc[mask], on='date', how='left')
-        trend_df = trend_df.sort_values('date')
+        # 1. Get the Date Range
+        max_d = summary_df['date'].max()
+        min_d = summary_df['date'].min()
+        d1, d2 = st.columns(2)
+        s_date = d1.date_input("Start", max_d - timedelta(days=30), key="trend_s")
+        e_date = d2.date_input("End", max_d, key="trend_e")
 
-        if not trend_df['distance_km'].isna().all():
-            st.divider()
-            tm1, tm2, tm3 = st.columns(3)
-            
-            total_km = trend_df['distance_km'].sum()
-            total_min = (trend_df['distance_km'] * trend_df['avg_pace']).sum() # Derived total time
-            
-            tm1.metric("Total Distance", f"{total_km:.1f} km")
-            days_range = max(1, (end_sel - start_sel).days)
-            tm2.metric("Weekly Avg", f"{(total_km / days_range * 7):.1f} km")
-            
-            # Real Weighted Average Pace
-            avg_pace_val = total_min / total_km if total_km > 0 else 0
-            tm3.metric("Avg Pace", f"{format_pace(avg_pace_val)} /km")
+        # 2. Filter the data
+        mask = (summary_df['date'] >= s_date) & (summary_df['date'] <= e_date)
+        raw_trend = summary_df.loc[mask].copy().sort_values('date')
 
-            # 2. Rolling Weekly Average (Calculated on the continuous index)
-            # We use '7D' window on the date index
-            trend_df['weekly_avg'] = trend_df.set_index(pd.to_datetime(trend_df['date']))['avg_pace']\
-                                             .rolling(window='7D', min_periods=1).mean().values
+        if not raw_trend.empty:
+            # 3. Create a clean, continuous timeline (The "Fix")
+            # This ensures the rolling window doesn't break on rest days
+            date_range = pd.date_range(start=s_date, end=e_date).date
+            clean_df = pd.DataFrame({'date': date_range})
             
+            # Merge the actual runs into this timeline
+            clean_df = pd.merge(clean_df, raw_trend[['date', 'avg_pace', 'distance_km']], on='date', how='left')
+            
+            # 4. Calculate the 7-day moving average
+            # We use min_periods=1 so it calculates even with just 1 run in the week
+            clean_df['weekly_smooth'] = clean_df['avg_pace'].rolling(window=7, min_periods=1, center=True).mean()
+
             c1, c2 = st.columns(2)
+            
             with c1:
-                # Mileage Chart (Fill NaNs with 0 for the bar chart)
-                plot_df = trend_df.fillna({'distance_km': 0})
-                fig_m = px.bar(plot_df, x='date', y='distance_km', title="Daily Mileage", 
-                               color_discrete_sequence=['#4DB6AC'], template="plotly_dark")
-                st.plotly_chart(fig_m, use_container_width=True, config={'displayModeBar': False})
-                
+                # Mileage Bars
+                fig_mileage = px.bar(clean_df.fillna(0), x='date', y='distance_km', 
+                                     title="Daily Mileage", color_discrete_sequence=['#4DB6AC'], 
+                                     template="plotly_dark")
+                st.plotly_chart(fig_mileage, use_container_width=True)
+
             with c2:
-                fig_p = go.Figure()
-                
-                # Raw Data Dots (Only show where data exists)
-                raw_data = trend_df.dropna(subset=['avg_pace'])
-                fig_p.add_trace(go.Scatter(
-                    x=raw_data['date'], y=raw_data['avg_pace'], 
-                    mode='markers', marker=dict(color='rgba(144, 164, 174, 0.4)'), name="Raw"
-                ))
-                
-                # 7-Day Trend Line (Continuous)
-                fig_p.add_trace(go.Scatter(
-                    x=trend_df['date'], y=trend_df['weekly_avg'], 
-                    mode='lines', line=dict(color='#4DB6AC', width=3, shape='spline'), 
-                    connectgaps=True, name="7-Day Trend"
+                # --- THE NEW TREND GRAPH ---
+                fig_trend = go.Figure()
+
+                # Trace A: Individual Run Dots (Raw)
+                # We only plot the days where an actual run happened
+                dots_df = clean_df.dropna(subset=['avg_pace'])
+                fig_trend.add_trace(go.Scatter(
+                    x=dots_df['date'], 
+                    y=dots_df['avg_pace'],
+                    mode='markers',
+                    name='Daily Run',
+                    marker=dict(color='rgba(144, 164, 174, 0.5)', size=10)
                 ))
 
-                fig_p.update_layout(
-                    template="plotly_dark", title="Pace Evolution",
+                # Trace B: The Weekly Average Line
+                # connectgaps=True is the magic that makes the line continuous over rest days
+                fig_trend.add_trace(go.Scatter(
+                    x=clean_df['date'], 
+                    y=clean_df['weekly_smooth'],
+                    mode='lines',
+                    name='7-Day Trend',
+                    line=dict(color='#4DB6AC', width=4, shape='spline'),
+                    connectgaps=True
+                ))
+
+                # Formatting to match your "9:00 to 5:00" preference
+                fig_trend.update_layout(
+                    title="Pace Evolution & Weekly Trend",
+                    template="plotly_dark",
                     showlegend=False,
                     yaxis=dict(
                         autorange='reversed',
+                        range=[9.0, 5.0], # Keep it in your preferred running window
                         tickmode='array',
-                        tickvals=[5, 6, 7, 8, 9],
-                        ticktext=['5:00', '6:00', '7:00', '8:00', '9:00']
-                    )
+                        tickvals=[9, 8, 7, 6, 5],
+                        ticktext=['9:00', '8:00', '7:00', '6:00', '5:00']
+                    ),
+                    xaxis=dict(fixedrange=True),
+                    margin=dict(l=10, r=10, t=40, b=10)
                 )
-                st.plotly_chart(fig_p, use_container_width=True, config={'displayModeBar': False})
+
+                st.plotly_chart(fig_trend, use_container_width=True, config={'displayModeBar': False})
         else:
-            st.warning("No runs found in this date range.")
+            st.info("Adjust the date range to see training trends.")
 
 else:
     st.info("No data available. Please sync your Strava activities.")
