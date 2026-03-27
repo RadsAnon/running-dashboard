@@ -114,7 +114,7 @@ if not summary_df.empty:
                                color_discrete_map={zone_label_map[z['name']]: z['color'] for z in current_zones}, 
                                template="plotly_dark")
             
-            fig_zones.update_layout(showlegend=False, yaxis_title=None, xaxis_title="Percentage of Run",bargap=0.5,height=250)
+            fig_zones.update_layout(showlegend=False, yaxis_title=None, xaxis_title="Percentage of Run",bargap=0.4,height=300)
             st.plotly_chart(fig_zones, use_container_width=True)
     # --- TAB 3: GLOBAL TRENDS (With Integrated Filter) ---
     with tab3:
