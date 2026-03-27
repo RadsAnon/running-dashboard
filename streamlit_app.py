@@ -4,14 +4,25 @@ import plotly.express as px
 from strava_utils import load_strava_data, get_detailed_streams
 from ui_components import calculate_pace_zones, generate_calendar_html, format_pace
 
-st.set_page_config(layout="wide", page_title="Training Command Center")
+st.set_page_config(
+    layout="wide", 
+    page_title="Training Command Center",
+    initial_sidebar_state="collapsed" # Save space on mobile
+)
 
 st.markdown("""
     <style>
         .stApp { background-color: #0E1117; color: #FAFAFA; }
         [data-testid="stMetricLabel"] { color: #90A4AE !important; }
-        .stTabs [data-baseweb="tab-list"] button [data-testid="stWidgetLabel"] p { color: #FAFAFA; }
-        .stTabs [data-baseweb="tab-highlight"] { background-color: #4DB6AC; }
+        
+        /* Make metrics stack on small screens */
+        [data-testid="stMetric"] {
+            width: 100% !important;
+            min-width: 100px !important;
+        }
+        
+        /* Remove padding for a tighter mobile look */
+        .block-container { padding-top: 2rem; padding-bottom: 2rem; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -28,18 +39,25 @@ if not summary_df.empty:
     tab1, tab2, tab3 = st.tabs(["📅 Training Log", "📈 Global Trends", "🔍 Activity Details"])
 
     with tab1:
-        st.components.v1.html(generate_calendar_html(summary_df), height=650, scrolling=True)
+        st.components.v1.html(generate_calendar_html(summary_df), height=600, scrolling=True)
 
     with tab2:
+        # On mobile, these will automatically stack vertically
         c1, c2 = st.columns(2)
         with c1:
-            st.plotly_chart(px.bar(summary_df, x='date', y='distance_km', title="Daily Mileage", 
-                           color_discrete_sequence=['#4DB6AC'], template="plotly_dark"), use_container_width=True)
+            fig_m = px.bar(summary_df, x='date', y='distance_km', title="Daily Mileage", 
+                           color_discrete_sequence=['#4DB6AC'], template="plotly_dark")
+            fig_m.update_xaxes(fixedrange=True) # Prevents accidental zooming
+            fig_m.update_yaxes(fixedrange=True)
+            st.plotly_chart(fig_m, use_container_width=True, config={'displayModeBar': False})
+            
         with c2:
             fig_p = px.line(summary_df, x='date', y='avg_pace', title="Pace Evolution", template="plotly_dark")
             fig_p.update_traces(line_color="#90A4AE", line_width=3)
-            fig_p.update_yaxes(autorange="reversed")
-            st.plotly_chart(fig_p, use_container_width=True)
+            fig_p.update_yaxes(autorange="reversed", fixedrange=True)
+            fig_p.update_xaxes(fixedrange=True)
+            st.plotly_chart(fig_p, use_container_width=True, config={'displayModeBar': False})
+            
     with tab3:
         options = {f"{r['date']} - {r['name']}": r['id'] for _, r in summary_df.iterrows()}
         selection = st.selectbox("Pick an activity:", list(options.keys()))
