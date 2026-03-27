@@ -145,6 +145,11 @@ if not summary_df.empty:
             tm2.metric("Weekly Avg", f"{(total_km / days_range * 7):.1f} km")
             tm3.metric("Avg Pace", f"{format_pace(trend_df['avg_pace'].mean())} /km")
 
+            trend_df = trend_df.sort_values('date')
+            # --- CALCULATE WEEKLY SMOOTHED PACE ---
+            trend_df['pace_weekly_avg'] = trend_df.set_index('date')['avg_pace']\
+                .rolling(window='7D').mean().values
+            
             c1, c2 = st.columns(2)
             with c1:
                 fig_m = px.bar(trend_df, x='date', y='distance_km', title="Daily Mileage", 
