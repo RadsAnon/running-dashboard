@@ -142,8 +142,13 @@ if not summary_df.empty:
             
             # 4. Calculate the 7-day moving average
             # We use min_periods=1 so it calculates even with just 1 run in the week
-            clean_df['weekly_smooth'] = clean_df['avg_pace'].rolling(window=7, min_periods=1, center=True).mean()
-
+            clean_df['weekly_smooth'] = (
+                clean_df['avg_pace']
+                .interpolate(method='linear') # Fill rest days with a line between runs
+                .rolling(window=7, min_periods=1, center=True)
+                .mean()
+            )
+    
             c1, c2 = st.columns(2)
             
             with c1:
