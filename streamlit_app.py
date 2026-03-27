@@ -146,9 +146,9 @@ if not summary_df.empty:
             with c2:
                 fig_p = go.Figure()
                 fig_p.add_trace(go.Scatter(x=trend_df['date'], y=trend_df['avg_pace'], mode='lines', 
-                                           marker=dict(color='rgba(144, 164, 174, 0.4)'), name="Raw"))
+                                           marker=dict(color='rgba(144, 164, 174, 0.4)')))
                 fig_p.add_trace(go.Scatter(x=trend_df['date'], y=trend_df['weekly_avg'], mode='lines', 
-                                           line=dict(color='#4DB6AC', width=3, shape='spline'), name="7-Day Trend"))
+                                           line=dict(color='#4DB6AC', width=3, shape='spline')))
                 fig_p.update_layout(template="plotly_dark", title="Pace Evolution", yaxis=dict(autorange='reversed'))
                 st.plotly_chart(fig_p, use_container_width=True,config={'displayModeBar': False})
 else:
