@@ -45,11 +45,13 @@ if not summary_df.empty:
         selection = st.selectbox("Pick an activity to inspect:", list(options.keys()))
         run_stats = summary_df[summary_df['id'] == options[selection]].iloc[0]
         
-        m1, m2, m3 = st.columns(3)
+        # --- TOP METRICS (Now 4 Columns) ---
+        m1, m2, m3, m4 = st.columns(4)
         m1.metric("Distance", f"{run_stats['distance_km']:.2f} km")
-        m2.metric("Moving Time", f"{run_stats['moving_time_min']:.1f} min")
+        m2.metric("Time", f"{run_stats['moving_time_min']:.1f} min")
         m3.metric("Avg Pace", f"{format_pace(run_stats['avg_pace'])} /km")
-
+        elev_gain = run_stats.get('total_elevation_gain', 0)
+        m4.metric("Elev Gain", f"{elev_gain:.0f} m")
         st.divider()
 
         run_data = get_detailed_streams(options[selection])
