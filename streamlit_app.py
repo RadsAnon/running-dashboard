@@ -159,22 +159,22 @@ if not summary_df.empty:
                 st.plotly_chart(fig_mileage, use_container_width=True)
 
             with c2:
-                # --- THE NEW TREND GRAPH ---
+                # --- DUAL LINE TREND GRAPH ---
                 fig_trend = go.Figure()
 
-                # Trace A: Individual Run Dots (Raw)
-                # We only plot the days where an actual run happened
+                # Trace A: Actual Pace (Daily Raw Data as a Line)
+                # We use 'lines+markers' so you can still see the specific run days
                 dots_df = clean_df.dropna(subset=['avg_pace'])
                 fig_trend.add_trace(go.Scatter(
                     x=dots_df['date'], 
                     y=dots_df['avg_pace'],
-                    mode='markers',
-                    name='Daily Run',
-                    marker=dict(color='rgba(144, 164, 174, 0.5)', size=10)
+                    mode='lines+markers', # Change from 'markers' to 'lines+markers'
+                    name='Actual Pace',
+                    line=dict(color='rgba(255, 255, 255, 0.2)', width=1), # Thin, faint line
+                    marker=dict(color='rgba(144, 164, 174, 0.4)', size=6)
                 ))
 
-                # Trace B: The Weekly Average Line
-                # connectgaps=True is the magic that makes the line continuous over rest days
+                # Trace B: The Weekly Average Line (Thick Trend)
                 fig_trend.add_trace(go.Scatter(
                     x=clean_df['date'], 
                     y=clean_df['weekly_smooth'],
@@ -191,7 +191,7 @@ if not summary_df.empty:
                     showlegend=False,
                     yaxis=dict(
                         autorange='reversed',
-                        range=[9.0, 5.0], # Keep it in your preferred running window
+                        range=[9.0, 5.0], 
                         tickmode='array',
                         tickvals=[9, 8, 7, 6, 5],
                         ticktext=['9:00', '8:00', '7:00', '6:00', '5:00']
@@ -201,8 +201,6 @@ if not summary_df.empty:
                 )
 
                 st.plotly_chart(fig_trend, use_container_width=True, config={'displayModeBar': False})
-        else:
-            st.info("Adjust the date range to see training trends.")
 
 else:
     st.info("No data available. Please sync your Strava activities.")
