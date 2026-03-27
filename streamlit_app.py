@@ -26,7 +26,7 @@ st.markdown("""
 
 col_title, col_sync = st.columns([4, 1])
 with col_title: 
-    st.title("Training Command Center")
+    st.title("🏃‍♀️ Run For Your Life")
 with col_sync:
     if st.button('🔄 Sync Data', use_container_width=True):
         st.cache_data.clear()
