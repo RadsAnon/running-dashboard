@@ -114,7 +114,7 @@ if not summary_df.empty:
                                    template="plotly_dark")
                 
                 fig_zones.update_layout(showlegend=False, yaxis_title=None, xaxis_title="Percentage of Run",bargap=0.4,height=300)
-                st.plotly_chart(fig_zones, use_container_width=True)
+                st.plotly_chart(fig_zones, use_container_width=True,config={'displayModeBar': False})
     # --- TAB 3: GLOBAL TRENDS (With Integrated Filter) ---
     with tab3:
         max_date, min_date = summary_df['date'].max(), summary_df['date'].min()
