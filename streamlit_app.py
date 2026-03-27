@@ -73,57 +73,57 @@ if not summary_df.empty:
             fig_splits.update_layout(yaxis={'autorange': 'reversed'}, xaxis_title="Pace (min/km)")
             st.plotly_chart(fig_splits, use_container_width=True, config={'displayModeBar': False})
             st.divider()
-
-            if not run_data.empty:
-                st.subheader("Pace Analysis: Continuous vs Splits")
-            
-                # Define a "floor" for the graph (e.g., 10 min/km or 12 min/km)
-                # This is where the bars will start growing from.
-                graph_floor = 10.0 
-            
-                fig = go.Figure()
-            
-                # 1. The Continuous Line (Background)
-                fig.add_trace(go.Scatter(
-                    x=run_data['dist_km'],
-                    y=run_data['pace_smooth'],
-                    mode='lines',
-                    name='Continuous Pace',
-                    line=dict(color='rgba(144, 164, 174, 0.4)', width=2),
-                    hoverinfo='skip'
-                ))
-            
-                # 2. The KM Bars (Grounded)
-                fig.add_trace(go.Bar(
-                    x=df_splits['km'] + 0.5, # Center the bar in the KM slot
-                    y=df_splits['pace'],
-                    base=graph_floor,        # <--- THIS GROUNDS THE BARS AT 10:00/km
-                    marker_color='#4DB6AC',
-                    text=df_splits['label'],
-                    textposition='inside',
-                    insidetextanchor='end',  # Keeps the label near your actual pace
-                    name='KM Split',
-                    width=0.8
-                ))
-            
-                # 3. Configure Layout
-                fig.update_layout(
-                    template="plotly_dark",
-                    xaxis_title="Distance (km)",
-                    yaxis_title="Pace (min/km)",
-                    showlegend=False,
-                    # Invert the axis: Faster (lower numbers) at the top, Floor at the bottom
-                    yaxis=dict(
-                        autorange='reversed',
-                        range=[graph_floor, df_splits['pace'].min() - 0.5], # From 10:00 down to 30s faster than PR
-                        fixedrange=True
-                    ),
-                    xaxis=dict(fixedrange=True),
-                    margin=dict(l=10, r=10, t=20, b=10),
-                    height=450
-                )
-            
-                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+        
+        if not run_data.empty:
+            st.subheader("Pace Analysis: Continuous vs Splits")
+        
+            # Define a "floor" for the graph (e.g., 10 min/km or 12 min/km)
+            # This is where the bars will start growing from.
+            graph_floor = 10.0 
+        
+            fig = go.Figure()
+        
+            # 1. The Continuous Line (Background)
+            fig.add_trace(go.Scatter(
+                x=run_data['dist_km'],
+                y=run_data['pace_smooth'],
+                mode='lines',
+                name='Continuous Pace',
+                line=dict(color='rgba(144, 164, 174, 0.4)', width=2),
+                hoverinfo='skip'
+            ))
+        
+            # 2. The KM Bars (Grounded)
+            fig.add_trace(go.Bar(
+                x=df_splits['km'] + 0.5, # Center the bar in the KM slot
+                y=df_splits['pace'],
+                base=graph_floor,        # <--- THIS GROUNDS THE BARS AT 10:00/km
+                marker_color='#4DB6AC',
+                text=df_splits['label'],
+                textposition='inside',
+                insidetextanchor='end',  # Keeps the label near your actual pace
+                name='KM Split',
+                width=0.8
+            ))
+        
+            # 3. Configure Layout
+            fig.update_layout(
+                template="plotly_dark",
+                xaxis_title="Distance (km)",
+                yaxis_title="Pace (min/km)",
+                showlegend=False,
+                # Invert the axis: Faster (lower numbers) at the top, Floor at the bottom
+                yaxis=dict(
+                    autorange='reversed',
+                    range=[graph_floor, df_splits['pace'].min() - 0.5], # From 10:00 down to 30s faster than PR
+                    fixedrange=True
+                ),
+                xaxis=dict(fixedrange=True),
+                margin=dict(l=10, r=10, t=20, b=10),
+                height=450
+            )
+        
+            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
             st.divider()
             # Intensity Zones logic
