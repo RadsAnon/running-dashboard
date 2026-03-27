@@ -142,7 +142,7 @@ if not summary_df.empty:
             c1, c2 = st.columns(2)
             with c1:
                 st.plotly_chart(px.bar(trend_df, x='date', y='distance_km', title="Daily Mileage", 
-                                       color_discrete_sequence=['#4DB6AC'], template="plotly_dark"), use_container_width=True)
+                                       color_discrete_sequence=['#4DB6AC'], template="plotly_dark"), use_container_width=True,config={'displayModeBar': False})
             with c2:
                 fig_p = go.Figure()
                 fig_p.add_trace(go.Scatter(x=trend_df['date'], y=trend_df['avg_pace'], mode='lines', 
@@ -150,6 +150,6 @@ if not summary_df.empty:
                 fig_p.add_trace(go.Scatter(x=trend_df['date'], y=trend_df['weekly_avg'], mode='lines', 
                                            line=dict(color='#4DB6AC', width=3, shape='spline'), name="7-Day Trend"))
                 fig_p.update_layout(template="plotly_dark", title="Pace Evolution", yaxis=dict(autorange='reversed'))
-                st.plotly_chart(fig_p, use_container_width=True)
+                st.plotly_chart(fig_p, use_container_width=True,config={'displayModeBar': False})
 else:
     st.info("No data available. Please sync your Strava activities.")
