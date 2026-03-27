@@ -62,6 +62,7 @@ if not summary_df.empty:
             splits = []
             c1, c2 = st.columns(2)
             with c1:
+                st.subheader("Pace Splits")
                 for km, group in run_data.groupby('km_bin'):
                     d_diff = (group['dist_m'].max() - group['dist_m'].min()) / 1000
                     t_diff = (group['time'].max() - group['time'].min()) / 60
@@ -71,7 +72,7 @@ if not summary_df.empty:
                 
                 df_splits = pd.DataFrame(splits)
                 fig_splits = px.bar(df_splits, x='Pace', y='KM', orientation='h', text='Label', 
-                                    title="Pace Splits", color_discrete_sequence=['#4DB6AC'], template="plotly_dark")
+                                     color_discrete_sequence=['#4DB6AC'], template="plotly_dark")
                 fig_splits.update_layout(yaxis={'autorange': 'reversed'}, xaxis_title="Pace (min/km)",bargap=0.5,height=250)
                 st.plotly_chart(fig_splits, use_container_width=True, config={'displayModeBar': False})
             
@@ -83,15 +84,12 @@ if not summary_df.empty:
                     total_seconds = best_5k_pace * 5 * 60
                     b_min, b_sec = int(total_seconds // 60), int(total_seconds % 60)
                     
-                    st.markdown(f"### Baseline Performance")
-                    st.markdown(f"**Reference 5K Time:** {b_min}:{b_sec:02d} | **Pace:** {format_pace(best_5k_pace)}/km")
-                    st.caption("Zones below are calibrated based on this benchmark.")
                 else:
                     st.caption("No 5K activities found. Using default baseline (6:00/km).")
                     best_5k_pace = 6.0
                 
                 
-                st.subheader("Intensity Zones")
+                st.subheader("Intensity Zones | "f"**Reference 5K Time:** {b_min}:{b_sec:02d} | **Pace:** {format_pace(best_5k_pace)}/km")
                 current_zones = calculate_pace_zones(best_5k_pace)
                 zone_label_map = {z['name']: f"{z['name']} ({z['range']})" for z in current_zones}
     
