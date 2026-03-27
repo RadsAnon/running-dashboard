@@ -79,7 +79,79 @@ if not filtered_df.empty:
         # not just ones in the filtered range
         options = {f"{r['date']} - {r['name']}": r['id'] for _, r in summary_df.iterrows()}
         selection = st.selectbox("Pick an activity:", list(options.keys()))
-        # ... (Rest of your tab3 logic remains the same) ...
+        run_stats = summary_df[summary_df['id'] == options[selection]].iloc[0]
+        
+        # --- TOP METRICS ---
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Distance", f"{run_stats['distance_km']:.2f} km")
+        m2.metric("Moving Time", f"{run_stats['moving_time_min']:.1f} min")
+        m3.metric("Avg Pace", f"{format_pace(run_stats['avg_pace'])} /km")
+
+        st.divider()
+
+        # --- BEST 5K CALCULATION ---
+        runs_near_5k = summary_df[summary_df['distance_km'].between(4.8, 5.5)]
+        if not runs_near_5k.empty:
+            best_5k_pace = runs_near_5k['avg_pace'].min()
+            total_seconds = best_5k_pace * 5 * 60
+            b_min, b_sec = int(total_seconds // 60), int(total_seconds % 60)
+            
+            st.markdown(f"### 🏆 Baseline Performance")
+            st.markdown(f"**Reference 5K Time:** {b_min}:{b_sec:02d} | **Pace:** {format_pace(best_5k_pace)}/km")
+            st.caption("Zones below are calibrated based on this benchmark.")
+        else:
+            st.caption("No 5K activities found. Using default baseline (6:00/km).")
+            best_5k_pace = 6.0
+
+        run_data = get_detailed_streams(options[selection])
+        if not run_data.empty:
+            # --- 1. PACE SPLITS CHART ---
+            run_data['km_bin'] = (run_data['dist_km']).astype(int) + 1
+            splits = []
+            for km, group in run_data.groupby('km_bin'):
+                d_diff = (group['dist_m'].max() - group['dist_m'].min()) / 1000
+                t_diff = (group['time'].max() - group['time'].min()) / 60
+                if d_diff > 0.05: # Adjusted threshold for small laps
+                    pace = t_diff / d_diff
+                    splits.append({'KM': f"KM {km}", 'Pace': pace, 'Label': f"{format_pace(pace)}"})
+            
+            df_splits = pd.DataFrame(splits)
+            fig_splits = px.bar(df_splits, x='Pace', y='KM', orientation='h', 
+                                text='Label', title="Pace Splits", 
+                                color_discrete_sequence=['#4DB6AC'], template="plotly_dark")
+            fig_splits.update_traces(textposition='outside')
+            fig_splits.update_layout(yaxis={'autorange': 'reversed'}, xaxis_title="Pace (min/km)")
+            st.plotly_chart(fig_splits, use_container_width=True)
+
+            st.divider()
+
+            # --- 2. INTENSITY ZONES CHART ---
+            current_zones = calculate_pace_zones(best_5k_pace)
+            zone_label_map = {z['name']: f"{z['name']} ({z['range']})" for z in current_zones}
+
+            def get_zone_name(p):
+                for z in current_zones:
+                    if z['min'] <= p < z['max']: return z['name']
+                return 'Other'
+
+            run_data['raw_zone'] = run_data['pace_smooth'].apply(get_zone_name)
+            run_data['display_zone'] = run_data['raw_zone'].map(zone_label_map)
+            
+            zone_time = run_data.groupby('display_zone')['time'].count().reset_index()
+            zone_time['percent'] = (zone_time['time'] / zone_time['time'].sum()) * 100
+            
+            z_display_order = [zone_label_map[z['name']] for z in reversed(current_zones)]
+            zone_time['display_zone'] = pd.Categorical(zone_time['display_zone'], categories=z_display_order, ordered=True)
+            zone_time = zone_time.sort_values('display_zone')
+
+            fig_zones = px.bar(zone_time, x='percent', y='display_zone', orientation='h', 
+                               title="Time in Intensity Zones (%)",
+                               color='display_zone', 
+                               color_discrete_map={zone_label_map[z['name']]: z['color'] for z in current_zones}, 
+                               template="plotly_dark")
+            
+            fig_zones.update_layout(showlegend=False, yaxis_title=None, xaxis_title="Percentage of Run")
+            st.plotly_chart(fig_zones, use_container_width=True)# 
 
 else:
     st.info("No activities found for the selected date range.")
