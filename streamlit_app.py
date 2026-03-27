@@ -154,10 +154,45 @@ if not summary_df.empty:
                 st.plotly_chart(fig_m, use_container_width=True, config={'displayModeBar': False})
                 
             with c2:
-                fig_p = px.line(trend_df, x='date', y='avg_pace', title="Pace Evolution", template="plotly_dark")
-                fig_p.update_traces(line_color="#90A4AE", line_width=3, mode='lines+markers')
-                fig_p.update_yaxes(autorange="reversed", fixedrange=True)
-                fig_p.update_xaxes(fixedrange=True)
+                # --- UPDATED PACE EVOLUTION WITH OVERLAY ---
+                fig_p = go.Figure()
+
+                # 1. Individual Activity Dots (Daily Raw Data)
+                fig_p.add_trace(go.Scatter(
+                    x=trend_df['date'],
+                    y=trend_df['avg_pace'],
+                    mode='markers',
+                    name='Daily Run',
+                    marker=dict(color='rgba(144, 164, 174, 0.4)', size=8),
+                    hovertemplate='Date: %{x}<br>Pace: %{y:.2f} min/km<extra></extra>'
+                ))
+
+                # 2. Weekly Moving Average (The Smooth Trend Line)
+                fig_p.add_trace(go.Scatter(
+                    x=trend_df['date'],
+                    y=trend_df['pace_weekly_avg'],
+                    mode='lines',
+                    name='Weekly Trend',
+                    line=dict(color='#4DB6AC', width=3, shape='spline'), # Spline makes it curvy
+                    hovertemplate='7-Day Avg: %{y:.2f} min/km<extra></extra>'
+                ))
+
+                fig_p.update_layout(
+                    title="Pace Evolution & Weekly Trend",
+                    template="plotly_dark",
+                    showlegend=False,
+                    yaxis=dict(
+                        autorange='reversed', 
+                        title="Pace (min/km)",
+                        # Ensure the Y-axis labels are in M:SS format
+                        tickmode='array',
+                        tickvals=[i/2 for i in range(10, 20)], # 5:00 to 10:00
+                        ticktext=[format_pace(i/2) for i in range(10, 20)]
+                    ),
+                    xaxis_title="Date",
+                    margin=dict(l=10, r=10, t=40, b=10)
+                )
+
                 st.plotly_chart(fig_p, use_container_width=True, config={'displayModeBar': False})
         else:
             st.warning("No runs found in this date range.")
