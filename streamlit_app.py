@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from strava_utils import load_strava_data, get_detailed_streams
 from ui_components import calculate_pace_zones, generate_calendar_html, format_pace
