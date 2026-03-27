@@ -50,6 +50,7 @@ if not summary_df.empty:
         m1.metric("Distance", f"{run_stats['distance_km']:.2f} km")
         m2.metric("Time", f"{run_stats['moving_time_min']:.1f} min")
         m3.metric("Avg Pace", f"{format_pace(run_stats['avg_pace'])} /km")
+        st.write(run_stats.index.tolist())
         elev_gain = run_stats.get('elevation_gain', 0)
         m4.metric("Elev Gain", f"{elev_gain:.0f} m")
         st.divider()
