@@ -77,67 +77,51 @@ if not summary_df.empty:
             if not run_data.empty:
                 st.subheader("Pace Analysis: Continuous vs Splits")
             
-                # 1. Process Split Data (Kilometer Bars)
-                run_data['km_bin'] = (run_data['dist_km']).astype(int)
-                splits = []
-                for km, group in run_data.groupby('km_bin'):
-                    d_diff = group['dist_km'].max() - group['dist_km'].min()
-                    t_diff = (group['time'].max() - group['time'].min()) / 60
-                    if d_diff > 0.1: # ignore tiny fragments
-                        pace = t_diff / d_diff
-                        splits.append({'km': km, 'pace': pace, 'label': format_pace(pace)})
-                
-                df_splits = pd.DataFrame(splits)
+                # Define a "floor" for the graph (e.g., 10 min/km or 12 min/km)
+                # This is where the bars will start growing from.
+                graph_floor = 10.0 
             
-                # 2. Clean Continuous Data (Remove stops/outliers for a cleaner graph)
-                # We cap pace at 12 min/km to keep the graph readable if you stopped for a light
-                clean_stream = run_data[run_data['pace_smooth'] < 12].copy()
-            
-                # 3. Create the Overlaid Figure
                 fig = go.Figure()
             
-                # Add Continuous Pace (The transparent background line)
+                # 1. The Continuous Line (Background)
                 fig.add_trace(go.Scatter(
-                    x=clean_stream['dist_km'],
-                    y=clean_stream['pace_smooth'],
+                    x=run_data['dist_km'],
+                    y=run_data['pace_smooth'],
                     mode='lines',
                     name='Continuous Pace',
-                    line=dict(color='rgba(144, 164, 174, 0.4)', width=2), # Transparent blue-grey
+                    line=dict(color='rgba(144, 164, 174, 0.4)', width=2),
                     hoverinfo='skip'
                 ))
             
-                # Add Pace Splits (The overlaid bars)
+                # 2. The KM Bars (Grounded)
                 fig.add_trace(go.Bar(
-                    x=df_splits['km'] + 0.5, # Center bars at the midpoint of each kilometer
+                    x=df_splits['km'] + 0.5, # Center the bar in the KM slot
                     y=df_splits['pace'],
-                    width=0.8,
-                    name='KM Split',
+                    base=graph_floor,        # <--- THIS GROUNDS THE BARS AT 10:00/km
                     marker_color='#4DB6AC',
                     text=df_splits['label'],
                     textposition='inside',
-                    insidetextanchor='start',
-                    textfont=dict(size=11, color='white'),
-                    hoverinfo='y'
+                    insidetextanchor='end',  # Keeps the label near your actual pace
+                    name='KM Split',
+                    width=0.8
                 ))
             
-                # Configure Layout
+                # 3. Configure Layout
                 fig.update_layout(
                     template="plotly_dark",
                     xaxis_title="Distance (km)",
                     yaxis_title="Pace (min/km)",
-                    yaxis=dict(autorange='reversed'), # FAST pace at the top
                     showlegend=False,
-                    height=400,
+                    # Invert the axis: Faster (lower numbers) at the top, Floor at the bottom
+                    yaxis=dict(
+                        autorange='reversed',
+                        range=[graph_floor, df_splits['pace'].min() - 0.5], # From 10:00 down to 30s faster than PR
+                        fixedrange=True
+                    ),
+                    xaxis=dict(fixedrange=True),
                     margin=dict(l=10, r=10, t=20, b=10),
-                    # Ensure the x-axis matches your actual run distance
-                    xaxis=dict(range=[0, run_stats['distance_km']])
+                    height=450
                 )
-            
-                # Set smart Y-axis limits based on your actual performance
-                if not df_splits.empty:
-                    y_top = df_splits['pace'].min() - 0.5 # 30s faster than best split
-                    y_bottom = df_splits['pace'].max() + 0.5 # 30s slower than worst split
-                    fig.update_yaxes(range=[y_bottom, y_top])
             
                 st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
