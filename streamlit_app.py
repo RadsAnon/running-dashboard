@@ -119,86 +119,41 @@ if not summary_df.empty:
     # --- TAB 3: GLOBAL TRENDS (With Integrated Filter) ---
     with tab3:
         st.subheader("Filter Training Period")
-        
         max_date = summary_df['date'].max()
         min_date = summary_df['date'].min()
-        
-        d1, d2 = st.columns(2)
-        with d1:
-            start_sel = st.date_input("Start Date", value=max_date - timedelta(days=30), 
-                                      min_value=min_date, max_value=max_date, key="trend_start")
-        with d2:
-            end_sel = st.date_input("End Date", value=max_date, 
-                                    min_value=min_date, max_value=max_date, key="trend_end")
 
-        # Filtering logic for the graphs
+        d1, d2 = st.columns(2)
+        start_sel = d1.date_input("Start Date", max_date - timedelta(days=30), key="ts")
+        end_sel = d2.date_input("End Date", max_date, key="te")
+
         mask = (summary_df['date'] >= start_sel) & (summary_df['date'] <= end_sel)
-        trend_df = summary_df.loc[mask].copy()
+        trend_df = summary_df.loc[mask].copy().sort_values('date')
 
         if not trend_df.empty:
             st.divider()
             tm1, tm2, tm3 = st.columns(3)
             total_km = trend_df['distance_km'].sum()
             tm1.metric("Total Distance", f"{total_km:.1f} km")
-            
             days_range = max(1, (end_sel - start_sel).days)
             tm2.metric("Weekly Avg", f"{(total_km / days_range * 7):.1f} km")
             tm3.metric("Avg Pace", f"{format_pace(trend_df['avg_pace'].mean())} /km")
-
-            trend_df = trend_df.sort_values('date')
-            # --- CALCULATE WEEKLY SMOOTHED PACE ---
-            trend_df['pace_weekly_avg'] = trend_df.set_index('date')['avg_pace']\
-                .rolling(window='7D').mean().values
+            # Rolling Weekly Average
+            trend_df['weekly_avg'] = trend_df.set_index(pd.to_datetime(trend_df['date']))['avg_pace']\
+                                             .rolling(window='7D').mean().values
             
             c1, c2 = st.columns(2)
             with c1:
-                fig_m = px.bar(trend_df, x='date', y='distance_km', title="Daily Mileage", 
-                               color_discrete_sequence=['#4DB6AC'], template="plotly_dark")
-                fig_m.update_xaxes(fixedrange=True)
-                fig_m.update_yaxes(fixedrange=True)
-                st.plotly_chart(fig_m, use_container_width=True, config={'displayModeBar': False})
-                
+                st.plotly_chart(px.bar(trend_df, x='date', y='distance_km', title="Daily Mileage", 
+                                       color_discrete_sequence=['#4DB6AC'], template="plotly_dark"), use_container_width=True)
             with c2:
-                # --- UPDATED PACE EVOLUTION WITH OVERLAY ---
                 fig_p = go.Figure()
-
-                # 1. Individual Activity Dots (Daily Raw Data)
-                fig_p.add_trace(go.Scatter(
-                    x=trend_df['date'],
-                    y=trend_df['avg_pace'],
-                    mode='markers',
-                    name='Daily Run',
-                    marker=dict(color='rgba(144, 164, 174, 0.4)', size=8),
-                    hovertemplate='Date: %{x}<br>Pace: %{y:.2f} min/km<extra></extra>'
-                ))
-
-                # 2. Weekly Moving Average (The Smooth Trend Line)
-                fig_p.add_trace(go.Scatter(
-                    x=trend_df['date'],
-                    y=trend_df['pace_weekly_avg'],
-                    mode='lines',
-                    name='Weekly Trend',
-                    line=dict(color='#4DB6AC', width=3, shape='spline'), # Spline makes it curvy
-                    hovertemplate='7-Day Avg: %{y:.2f} min/km<extra></extra>'
-                ))
-
-                fig_p.update_layout(
-                    title="Pace Evolution & Weekly Trend",
-                    template="plotly_dark",
-                    showlegend=False,
-                    yaxis=dict(
-                        autorange='reversed', 
-                        title="Pace (min/km)",
-                        # Ensure the Y-axis labels are in M:SS format
-                        tickmode='array',
-                        tickvals=[i/2 for i in range(10, 20)], # 5:00 to 10:00
-                        ticktext=[format_pace(i/2) for i in range(10, 20)]
-                    ),
-                    xaxis_title="Date",
-                    margin=dict(l=10, r=10, t=40, b=10)
-                )
-
-                st.plotly_chart(fig_p, use_container_width=True, config={'displayModeBar': False})
+                fig_p.add_trace(go.Scatter(x=trend_df['date'], y=trend_df['avg_pace'], mode='markers', 
+                                           marker=dict(color='rgba(144, 164, 174, 0.4)'), name="Raw"))
+                fig_p.add_trace(go.Scatter(x=trend_df['date'], y=trend_df['weekly_avg'], mode='lines', 
+                                           line=dict(color='#4DB6AC', width=3, shape='spline'), name="7-Day Trend"))
+                fig_p.update_layout(template="plotly_dark", title="Pace Evolution", yaxis=dict(autorange='reversed'))
+                st.plotly_chart(fig_p, use_container_width=True)
+                
         else:
             st.warning("No runs found in this date range.")
 
