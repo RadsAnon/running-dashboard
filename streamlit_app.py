@@ -118,7 +118,7 @@ if not summary_df.empty:
             st.plotly_chart(fig_zones, use_container_width=True)
     # --- TAB 3: GLOBAL TRENDS (With Integrated Filter) ---
     with tab3:
-        st.subheader("Global Trends")
+        st.subheader("ABCGlobal Trends")
         
         # 1. Get the Date Range
         max_d = summary_df['date'].max()
