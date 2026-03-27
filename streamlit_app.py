@@ -149,7 +149,7 @@ if not summary_df.empty:
                                            marker=dict(color='rgba(144, 164, 174, 0.4)')))
                 fig_p.add_trace(go.Scatter(x=trend_df['date'], y=trend_df['weekly_avg'], mode='lines', 
                                            line=dict(color='#4DB6AC', width=3, shape='spline')))
-                fig_p.update_layout(template="plotly_dark", title="Pace Evolution", yaxis=dict(autorange='reversed'))
+                fig_p.update_layout(template="plotly_dark", title="Pace Evolution", yaxis=dict(autorange='reversed'),showlegend=False)
                 st.plotly_chart(fig_p, use_container_width=True,config={'displayModeBar': False})
 else:
     st.info("No data available. Please sync your Strava activities.")
