@@ -45,7 +45,7 @@ def load_strava_data():
         data.append({
             'id': a.id, 'name': a.name, 'date': a.start_date_local.date(),
             'datetime': a.start_date_local, 'distance_km': dist_km,
-            'moving_time_min': moving_min, 'avg_pace': pace
+            'moving_time_min': moving_min, 'avg_pace': pace,
             'total_elevation_gain': float(activity.total_elevation_gain)
         })
     return pd.DataFrame(data).sort_values('datetime', ascending=False)
