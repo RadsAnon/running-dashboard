@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from strava_utils import load_strava_data, get_detailed_streams
 from ui_components import calculate_pace_zones, generate_calendar_html, format_pace
 
-st.set_page_config(layout="wide", page_title="Training Command Center")
+st.set_page_config(layout="wide", page_title="🏃‍♀️ Run For Your Life")
 
 # --- DATA LOADING ---
 summary_df = load_strava_data()
