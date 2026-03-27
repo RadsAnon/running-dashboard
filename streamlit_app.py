@@ -69,17 +69,49 @@ if not summary_df.empty:
                                 title="Pace Splits", color_discrete_sequence=['#4DB6AC'], template="plotly_dark")
             fig_splits.update_layout(yaxis={'autorange': 'reversed'}, xaxis_title="Pace (min/km)")
             st.plotly_chart(fig_splits, use_container_width=True, config={'displayModeBar': False})
-
+            st.divider()
             # Intensity Zones logic
             runs_near_5k = summary_df[summary_df['distance_km'].between(4.8, 5.5)]
-            best_5k_pace = runs_near_5k['avg_pace'].min() if not runs_near_5k.empty else 6.0
+            if not runs_near_5k.empty:
+                best_5k_pace = runs_near_5k['avg_pace'].min()
+                total_seconds = best_5k_pace * 5 * 60
+                b_min, b_sec = int(total_seconds // 60), int(total_seconds % 60)
+                
+                st.markdown(f"### Baseline Performance")
+                st.markdown(f"**Reference 5K Time:** {b_min}:{b_sec:02d} | **Pace:** {format_pace(best_5k_pace)}/km")
+                st.caption("Zones below are calibrated based on this benchmark.")
+            else:
+                st.caption("No 5K activities found. Using default baseline (6:00/km).")
+                best_5k_pace = 6.0
             
-            st.divider()
+            
             st.subheader("Intensity Zones")
             current_zones = calculate_pace_zones(best_5k_pace)
-            # ... (Existing Zone Chart Logic) ...
-            # (Keeping it brief to focus on your filter request)
+            zone_label_map = {z['name']: f"{z['name']} ({z['range']})" for z in current_zones}
 
+            def get_zone_name(p):
+                for z in current_zones:
+                    if z['min'] <= p < z['max']: return z['name']
+                return 'Other'
+
+            run_data['raw_zone'] = run_data['pace_smooth'].apply(get_zone_name)
+            run_data['display_zone'] = run_data['raw_zone'].map(zone_label_map)
+            
+            zone_time = run_data.groupby('display_zone')['time'].count().reset_index()
+            zone_time['percent'] = (zone_time['time'] / zone_time['time'].sum()) * 100
+            
+            z_display_order = [zone_label_map[z['name']] for z in reversed(current_zones)]
+            zone_time['display_zone'] = pd.Categorical(zone_time['display_zone'], categories=z_display_order, ordered=True)
+            zone_time = zone_time.sort_values('display_zone')
+
+            fig_zones = px.bar(zone_time, x='percent', y='display_zone', orientation='h', 
+                               title="Time in Intensity Zones (%)",
+                               color='display_zone', 
+                               color_discrete_map={zone_label_map[z['name']]: z['color'] for z in current_zones}, 
+                               template="plotly_dark")
+            
+            fig_zones.update_layout(showlegend=False, yaxis_title=None, xaxis_title="Percentage of Run")
+            st.plotly_chart(fig_zones, use_container_width=True)
     # --- TAB 3: GLOBAL TRENDS (With Integrated Filter) ---
     with tab3:
         st.subheader("Filter Training Period")
