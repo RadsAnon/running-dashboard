@@ -75,56 +75,63 @@ if not summary_df.empty:
             st.divider()
         
         if not run_data.empty:
-            st.subheader("Pace Analysis: Continuous vs Splits")
-        
-            # Define a "floor" for the graph (e.g., 10 min/km or 12 min/km)
-            # This is where the bars will start growing from.
-            graph_floor = 10.0 
-        
-            fig = go.Figure()
-        
-            # 1. The Continuous Line (Background)
-            fig.add_trace(go.Scatter(
-                x=run_data['dist_km'],
-                y=run_data['pace_smooth'],
-                mode='lines',
-                name='Continuous Pace',
-                line=dict(color='rgba(144, 164, 174, 0.4)', width=2),
-                hoverinfo='skip'
-            ))
-        
-            # 2. The KM Bars (Grounded)
-            fig.add_trace(go.Bar(
-                x=df_splits['km'] + 0.5, # Center the bar in the KM slot
-                y=df_splits['pace'],
-                base=graph_floor,        # <--- THIS GROUNDS THE BARS AT 10:00/km
-                marker_color='#4DB6AC',
-                text=df_splits['label'],
-                textposition='inside',
-                insidetextanchor='end',  # Keeps the label near your actual pace
-                name='KM Split',
-                width=0.8
-            ))
-        
-            # 3. Configure Layout
-            fig.update_layout(
-                template="plotly_dark",
-                xaxis_title="Distance (km)",
-                yaxis_title="Pace (min/km)",
-                showlegend=False,
-                # Invert the axis: Faster (lower numbers) at the top, Floor at the bottom
-                yaxis=dict(
-                    autorange='reversed',
-                    range=[graph_floor, df_splits['pace'].min() - 0.5], # From 10:00 down to 30s faster than PR
-                    fixedrange=True
-                ),
-                xaxis=dict(fixedrange=True),
-                margin=dict(l=10, r=10, t=20, b=10),
-                height=450
-            )
-        
-            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+            # 1. Create the Split Data with explicit columns
+            run_data['km_bin'] = (run_data['dist_km']).astype(int)
+            splits = []
+            
+            for km, group in run_data.groupby('km_bin'):
+                d_min, d_max = group['dist_km'].min(), group['dist_km'].max()
+                d_diff = d_max - d_min
+                
+                t_min, t_max = group['time'].min(), group['time'].max()
+                t_diff = (t_max - t_min) / 60
+                
+                # Only add if there's enough distance to calculate a pace
+                if d_diff > 0.01: 
+                    pace = t_diff / d_diff
+                    splits.append({'km': km, 'pace': pace, 'label': format_pace(pace)})
+            
+            # Use an empty DF with correct columns if no splits exist
+            df_splits = pd.DataFrame(splits, columns=['km', 'pace', 'label'])
 
+            if not df_splits.empty:
+                st.subheader("Pace Analysis: Continuous vs Splits")
+                
+                graph_floor = 10.0
+                fig = go.Figure()
+
+                # Continuous Pace Trace
+                fig.add_trace(go.Scatter(
+                    x=run_data['dist_km'],
+                    y=run_data['pace_smooth'],
+                    mode='lines',
+                    line=dict(color='rgba(144, 164, 174, 0.4)', width=2),
+                    name='Continuous Pace'
+                ))
+
+                # KM Bars Trace
+                fig.add_trace(go.Bar(
+                    x=df_splits['km'] + 0.5, 
+                    y=df_splits['pace'],
+                    base=graph_floor,
+                    marker_color='#4DB6AC',
+                    text=df_splits['label'],
+                    textposition='inside',
+                    insidetextanchor='end',
+                    name='KM Split'
+                ))
+
+                fig.update_layout(
+                    template="plotly_dark",
+                    yaxis=dict(autorange='reversed', range=[graph_floor, df_splits['pace'].min() - 0.5]),
+                    xaxis=dict(range=[0, run_stats['distance_km']]),
+                    showlegend=False,
+                    height=450
+                )
+
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("Run is too short to generate kilometer splits.")
             st.divider()
             # Intensity Zones logic
             runs_near_5k = summary_df[summary_df['distance_km'].between(4.8, 5.5)]
