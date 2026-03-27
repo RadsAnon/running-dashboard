@@ -89,7 +89,7 @@ if not summary_df.empty:
                     best_5k_pace = 6.0
                 
                 
-                st.subheader("Intensity Zones | "f"**Reference 5K Time:** {b_min}:{b_sec:02d} | **Pace:** {format_pace(best_5k_pace)}/km")
+                st.subheader("Intensity Zones | "f"**Reference 5K Pace:** {format_pace(best_5k_pace)}")
                 current_zones = calculate_pace_zones(best_5k_pace)
                 zone_label_map = {z['name']: f"{z['name']} ({z['range']})" for z in current_zones}
     
@@ -109,7 +109,6 @@ if not summary_df.empty:
                 zone_time = zone_time.sort_values('display_zone')
     
                 fig_zones = px.bar(zone_time, x='percent', y='display_zone', orientation='h', 
-                                   title="Time in Intensity Zones (%)",
                                    color='display_zone', 
                                    color_discrete_map={zone_label_map[z['name']]: z['color'] for z in current_zones}, 
                                    template="plotly_dark")
